@@ -5,7 +5,7 @@ node_modules/
 # build output
 server/dist/
 client/dist/
-client/dist_verify/
+client/dist*/
 *.tsbuildinfo
 vite.config.ts.timestamp-*
 

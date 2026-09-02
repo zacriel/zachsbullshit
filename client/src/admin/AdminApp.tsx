@@ -2,9 +2,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { api, getToken, setToken } from '../api';
 import { Icon } from '../components/Icon';
 import { Login } from './Login';
-import { LinksAdmin } from './LinksAdmin';
-import { ProjectsAdmin } from './ProjectsAdmin';
-import { AboutAdmin } from './AboutAdmin';
 import { ContactAdmin } from './ContactAdmin';
 import { HealthAdmin } from './HealthAdmin';
 import { AnalyticsAdmin } from './AnalyticsAdmin';
@@ -19,11 +16,10 @@ interface TabDef {
   render: (notify: NotifyFn) => JSX.Element;
 }
 
-// Tabs are keyed by module id — a tab shows only if its module is enabled.
+// Content (links / projects / about) is edited inline on the site itself.
+// The dashboard keeps only the backend-facing modules. A tab shows only if
+// its module is enabled.
 const TAB_DEFS: TabDef[] = [
-  { id: 'links', label: 'Links', icon: 'compass', render: (n) => <LinksAdmin notify={n} /> },
-  { id: 'projects', label: 'Projects', icon: 'diagram-project', render: (n) => <ProjectsAdmin notify={n} /> },
-  { id: 'about', label: 'About', icon: 'user', render: (n) => <AboutAdmin notify={n} /> },
   { id: 'contact', label: 'Messages', icon: 'envelope', render: (n) => <ContactAdmin notify={n} /> },
   { id: 'health', label: 'Health', icon: 'heart-pulse', render: (n) => <HealthAdmin notify={n} /> },
   { id: 'analytics', label: 'Analytics', icon: 'chart-line', render: () => <AnalyticsAdmin /> },

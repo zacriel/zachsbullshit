@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { api } from './api';
+import { useAuth } from './auth/AuthContext';
 import { Header } from './components/Header';
 import { Footer } from './components/Footer';
 import { Icon } from './components/Icon';
+import { LoginModal } from './components/LoginModal';
 import { AboutModule } from './modules/AboutModule';
 import { LinksModule } from './modules/LinksModule';
 import { ProjectsModule } from './modules/ProjectsModule';
@@ -11,8 +13,6 @@ import { AdminApp } from './admin/AdminApp';
 import type { ModuleManifestEntry } from './types';
 
 const BRAND = 'Zac Stambaugh';
-
-/** Public modules render in this order; anything not in the manifest is skipped. */
 const PUBLIC_ORDER = ['about', 'links', 'projects', 'contact'] as const;
 
 const COMPONENTS: Record<string, (props: { icon: string }) => JSX.Element | null> = {
@@ -23,16 +23,26 @@ const COMPONENTS: Record<string, (props: { icon: string }) => JSX.Element | null
 };
 
 export default function App() {
-  // Simple path routing — server serves index.html for every route.
   if (window.location.pathname.startsWith('/admin')) {
     return <AdminApp />;
   }
   return <PublicSite />;
 }
 
+function GradientGround() {
+  return (
+    <>
+      <div className="gradient-bg" aria-hidden="true" />
+      <div className="gradient-veil" aria-hidden="true" />
+    </>
+  );
+}
+
 function PublicSite() {
+  const { editMode, toast, setEditMode } = useAuth();
   const [modules, setModules] = useState<ModuleManifestEntry[] | null>(null);
   const [failed, setFailed] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
 
   useEffect(() => {
     api
@@ -43,19 +53,25 @@ function PublicSite() {
 
   if (failed) {
     return (
-      <div className="center-state">
-        <Icon name="triangle-exclamation" />
-        <p>Could not reach the server. Please try again shortly.</p>
-      </div>
+      <>
+        <GradientGround />
+        <div className="center-state">
+          <Icon name="triangle-exclamation" />
+          <p>Could not reach the server. Please try again shortly.</p>
+        </div>
+      </>
     );
   }
 
   if (!modules) {
     return (
-      <div className="center-state">
-        <span className="spinner" />
-        <p>Loading…</p>
-      </div>
+      <>
+        <GradientGround />
+        <div className="center-state">
+          <span className="spinner" />
+          <p>Loading…</p>
+        </div>
+      </>
     );
   }
 
@@ -64,36 +80,59 @@ function PublicSite() {
   const hasAbout = byId.has('about');
 
   return (
-    <div className="app">
-      <Header brand={BRAND} modules={publicModules} />
-      <main className="main">
-        <div className="container">
-          {/* Fallback hero when the About module is disabled */}
+    <>
+      <GradientGround />
+      <div className="app">
+        <Header brand={BRAND} modules={publicModules} onSignIn={() => setShowLogin(true)} />
+
+        <main className="main">
           {!hasAbout && (
-            <header className="hero">
-              <div className="hero__avatar hero__avatar--fallback">
+            <section className="jumbo" id="top">
+              <div className="jumbo__avatar jumbo__avatar--fallback">
                 <Icon name="bolt" />
               </div>
               <h1>{BRAND}</h1>
-              <p className="hero__headline">Everything I build, in one place.</p>
-            </header>
+              <p className="jumbo__headline">Everything I build, in one place.</p>
+            </section>
           )}
 
-          {PUBLIC_ORDER.map((id) => {
-            const mod = byId.get(id);
-            if (!mod) return null;
-            const Comp = COMPONENTS[id];
-            return Comp ? <Comp key={id} icon={mod.icon} /> : null;
-          })}
+          <div className="container">
+            {PUBLIC_ORDER.map((id) => {
+              const mod = byId.get(id);
+              if (!mod) return null;
+              const Comp = COMPONENTS[id];
+              return Comp ? <Comp key={id} icon={mod.icon} /> : null;
+            })}
 
-          {publicModules.length === 0 && (
-            <div className="empty" style={{ marginTop: 48 }}>
-              No public modules are enabled.
-            </div>
-          )}
+            {publicModules.length === 0 && (
+              <div className="empty" style={{ marginTop: 120 }}>
+                No public modules are enabled.
+              </div>
+            )}
+          </div>
+
+          <Footer brand={BRAND} />
+        </main>
+      </div>
+
+      {editMode && (
+        <div className="edit-banner">
+          <span className="edit-banner__dot" />
+          <span>Editing — changes save as you go</span>
+          <button className="btn btn--primary btn--sm" onClick={() => setEditMode(false)}>
+            <Icon name="check" /> Done
+          </button>
         </div>
-      </main>
-      <Footer brand={BRAND} />
-    </div>
+      )}
+
+      {showLogin && <LoginModal onClose={() => setShowLogin(false)} />}
+
+      {toast && (
+        <div className={`toast ${toast.err ? 'toast--error' : ''}`}>
+          <Icon name={toast.err ? 'circle-exclamation' : 'circle-check'} className="toast__ico" />
+          {toast.msg}
+        </div>
+      )}
+    </>
   );
 }
