@@ -52,7 +52,10 @@ function HeadingTile({ tile }: { tile: Tile }) {
   const c = tile.config;
   return (
     <div className="tile tile--heading">
-      <h2 style={{ fontSize: c.level === 1 ? '2rem' : '1.5rem' }}>{c.text || ''}</h2>
+      <h2 style={{ fontSize: c.level === 1 ? '2rem' : '1.5rem' }}>
+        {c.icon && <Icon name={c.icon} className="tile--heading__icon" />}
+        {c.text || ''}
+      </h2>
       <span className="tile--heading__rule" />
     </div>
   );
@@ -150,7 +153,7 @@ function ServiceTile({ tile, status }: { tile: Tile; status?: ServiceStatus }) {
         </span>
         <div style={{ minWidth: 0, flex: 1 }}>
           <div className="tile--service__name">{c.name || 'Service'}</div>
-          <div className="admin-row__muted" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <div className="admin-row__muted" style={{ wordBreak: 'break-word' }}>
             {address}
           </div>
         </div>

@@ -60,6 +60,7 @@ export function TileEditor({
                   <option value="2">Normal</option>
                 </select>
               </Field>
+              <Field label="Icon (optional prefix)"><IconPicker value={config.icon || ''} onChange={(v) => set('icon', v)} /></Field>
             </>
           )}
 

@@ -452,9 +452,12 @@ h1, h2, h3 {
 .link-card__desc {
   color: var(--text-muted);
   font-size: 0.86rem;
-  white-space: nowrap;
+  /* Wrap instead of truncating so nothing is lost. */
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 .link-card__arrow {
   position: relative;
@@ -925,6 +928,21 @@ h1, h2, h3 {
 }
 .tile--banner__subtitle { color: var(--text-muted); font-size: clamp(1rem, 2vw, 1.3rem); margin: 14px 0 0; }
 
+/* Full-bleed: banners break out of the centered grid to span the whole
+   viewport width. The tile is centered in the grid, so shifting it to the
+   viewport center and giving it 100vw makes it edge-to-edge. */
+.grid-item > .tile--banner,
+.stack-item > .tile--banner {
+  position: relative;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100vw;
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+}
+.tile--banner { min-height: 200px; }
+
 /* ---------- Tile: heading ---------- */
 .tile--heading {
   display: flex;
@@ -933,7 +951,8 @@ h1, h2, h3 {
   padding: 4px 2px;
   background: transparent;
 }
-.tile--heading h2 { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.02em; white-space: nowrap; }
+.tile--heading h2 { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.02em; white-space: nowrap; display: inline-flex; align-items: center; gap: 10px; }
+.tile--heading__icon { color: var(--accent-bright); }
 .tile--heading__rule { flex: 1; height: 1px; background: linear-gradient(90deg, var(--border-strong), transparent); }
 
 /* ---------- Tile: link ---------- */
@@ -980,7 +999,10 @@ h1, h2, h3 {
   background: var(--surface-glass);
   backdrop-filter: blur(12px);
   border: 1px solid var(--border);
+  overflow: auto;
 }
+.tile--link { overflow: hidden; }
+.link-card__label { overflow-wrap: anywhere; }
 .tile--service__head { display: flex; align-items: center; gap: 12px; }
 .tile--service__name { font-weight: 700; font-size: 1.05rem; }
 .tile--service__meta { display: flex; gap: 14px; align-items: center; font-size: 0.9rem; }
@@ -1040,6 +1062,36 @@ h1, h2, h3 {
 
 @media (max-width: 680px) {
   .palette-fab { right: 16px; bottom: 84px; }
+}
+
+/* ---------- Mobile: natural-height vertical stack ---------- */
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.stack-item {
+  position: relative;
+}
+/* Tiles size to their content on mobile (no fixed grid rows). */
+.stack-item > .tile--link,
+.stack-item > .tile--service,
+.stack-item > .tile--contact,
+.stack-item > .tile--text,
+.stack-item > .tile--project {
+  height: auto;
+}
+.stack-item > .tile--heading { padding: 8px 2px 2px; }
+.stack-item > .tile--project { overflow: visible; }
+.stack-item .tile--service__motd { -webkit-line-clamp: 4; }
+
+@media (max-width: 767px) {
+  .container { padding: 0 16px; }
+  .main--grid { padding-top: 78px; }
+  .tile--banner { padding: 26px 22px; min-height: 220px; }
+  .tile--banner__title { font-size: clamp(2rem, 9vw, 3rem); }
+  /* Header pill hugs the screen a little tighter. */
+  .header { padding: 10px 0; }
 }
 
 /* ---------- Per-tile background image ---------- */

@@ -13,6 +13,37 @@ const COLS = 12;
 const ROW_H = 92;
 
 /**
+ * Content-aware minimum grid size for a tile, so it can't be resized small
+ * enough to clip its contents. Grows with the amount of text a tile holds.
+ */
+function tileMins(t: Tile): { minW: number; minH: number } {
+  const c = t.config || {};
+  const len = (v: unknown) => (typeof v === 'string' ? v.length : 0);
+  switch (t.type) {
+    case 'banner':
+      return { minW: 6, minH: 3 };
+    case 'heading':
+      return { minW: 2, minH: 1 };
+    case 'link':
+      return { minW: 3, minH: len(c.description) > 40 ? 3 : 2 };
+    case 'service':
+      return { minW: 3, minH: 3 };
+    case 'project': {
+      const tags = Array.isArray(c.tags) ? c.tags.length : 0;
+      return { minW: tags > 4 ? 4 : 3, minH: len(c.description) > 120 ? 5 : 4 };
+    }
+    case 'text': {
+      const chars = len(c.body);
+      return { minW: 3, minH: Math.max(2, Math.min(8, 2 + Math.floor(chars / 160))) };
+    }
+    case 'contact':
+      return { minW: 4, minH: 6 };
+    default:
+      return { minW: 2, minH: 2 };
+  }
+}
+
+/**
  * The dashboard: a responsive, drag-and-resize grid of tiles. Visitors see
  * the saved layout (static); the admin in edit mode can drag, resize, add,
  * edit, and remove tiles, with the layout saved back to the server.
@@ -25,6 +56,17 @@ export function GridCanvas() {
   const [statuses, setStatuses] = useState<Record<number, ServiceStatus>>({});
   const [editing, setEditing] = useState<Tile | null>(null);
   const [showPalette, setShowPalette] = useState(false);
+  // On phones we abandon the drag-grid for a clean natural-height stack.
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches,
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const on = () => setIsMobile(mq.matches);
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
 
   const loadTiles = useCallback(() => {
     api
@@ -48,13 +90,28 @@ export function GridCanvas() {
 
   const layouts = useMemo(() => {
     const list = tiles || [];
-    const lg: Layout[] = list.map((t) => ({ i: String(t.id), x: t.x, y: t.y, w: t.w, h: t.h }));
+    // Enforce content-aware minimums so a content-heavy tile can't be shrunk
+    // small enough to clip its contents, and grow tiles that start too small.
+    const lg: Layout[] = list.map((t) => {
+      const m = tileMins(t);
+      return {
+        i: String(t.id),
+        x: t.x,
+        y: t.y,
+        w: Math.max(t.w, m.minW),
+        h: Math.max(t.h, m.minH),
+        minW: m.minW,
+        minH: m.minH,
+      };
+    });
     // Mobile: stack everything into a single column, preserving reading order.
     const ordered = [...list].sort((a, b) => a.y - b.y || a.x - b.x);
     let cursor = 0;
     const xs: Layout[] = ordered.map((t) => {
-      const item = { i: String(t.id), x: 0, y: cursor, w: 2, h: t.h };
-      cursor += t.h;
+      const m = tileMins(t);
+      const h = Math.max(t.h, m.minH);
+      const item = { i: String(t.id), x: 0, y: cursor, w: 2, h, minW: 2, minH: m.minH };
+      cursor += h;
       return item;
     });
     return { lg, xs };
@@ -136,47 +193,76 @@ export function GridCanvas() {
         <div className="empty" style={{ marginTop: 140 }}>Nothing here yet.</div>
       )}
 
-      <ResponsiveGrid
-        className="layout"
-        layouts={layouts}
-        breakpoints={{ lg: 768, xs: 0 }}
-        cols={{ lg: COLS, xs: 2 }}
-        rowHeight={ROW_H}
-        margin={[16, 16]}
-        isDraggable={canEdit}
-        isResizable={canEdit}
-        draggableCancel=".tile-actions,.tile-actions *"
-        compactType="vertical"
-        onDragStop={(l) => persistLayout(l)}
-        onResizeStop={(l) => persistLayout(l)}
-      >
-        {tiles.map((tile) => {
-          // Banners paint their own background; every other tile type can carry
-          // an optional per-tile background image (uploaded or via URL).
-          const bg = tile.type !== 'banner' ? (tile.config.bg_image as string | undefined) : undefined;
-          return (
-          <div
-            key={String(tile.id)}
-            className={`grid-item ${!tile.enabled ? 'grid-item--hidden' : ''} ${bg ? 'grid-item--bg' : ''}`}
-            style={bg ? ({ ['--tile-bg']: `url("${bg}")` } as CSSProperties) : undefined}
-          >
-            <TileView tile={tile} status={statuses[tile.id]} />
-            {canEdit && (
-              <>
-                <div className="tile-editcover" />
-                <div className="tile-actions">
-                  <button className="btn btn--ghost btn--icon" onClick={() => setEditing(tile)} title="Edit tile">
-                    <Icon name="pen" />
-                  </button>
+      {isMobile ? (
+        <div className="stack">
+          {[...tiles]
+            .sort((a, b) => a.y - b.y || a.x - b.x)
+            .map((tile) => {
+              const bg = tile.type !== 'banner' ? (tile.config.bg_image as string | undefined) : undefined;
+              return (
+                <div
+                  key={String(tile.id)}
+                  className={`stack-item ${!tile.enabled ? 'grid-item--hidden' : ''} ${bg ? 'grid-item--bg' : ''}`}
+                  style={bg ? ({ ['--tile-bg']: `url("${bg}")` } as CSSProperties) : undefined}
+                >
+                  <TileView tile={tile} status={statuses[tile.id]} />
+                  {canEdit && (
+                    <>
+                      <div className="tile-actions">
+                        <button className="btn btn--ghost btn--icon" onClick={() => setEditing(tile)} title="Edit tile">
+                          <Icon name="pen" />
+                        </button>
+                      </div>
+                      {!tile.enabled && <span className="tile-hidden-badge">Hidden</span>}
+                    </>
+                  )}
                 </div>
-                {!tile.enabled && <span className="tile-hidden-badge">Hidden</span>}
-                <span className="tile-drag-hint"><Icon name="up-down-left-right" /></span>
-              </>
-            )}
-          </div>
-          );
-        })}
-      </ResponsiveGrid>
+              );
+            })}
+        </div>
+      ) : (
+        <ResponsiveGrid
+          className="layout"
+          layouts={layouts}
+          breakpoints={{ lg: 768, xs: 0 }}
+          cols={{ lg: COLS, xs: 2 }}
+          rowHeight={ROW_H}
+          margin={[16, 16]}
+          isDraggable={canEdit}
+          isResizable={canEdit}
+          draggableCancel=".tile-actions,.tile-actions *"
+          compactType="vertical"
+          onDragStop={(l) => persistLayout(l)}
+          onResizeStop={(l) => persistLayout(l)}
+        >
+          {tiles.map((tile) => {
+            // Banners paint their own background; every other tile type can carry
+            // an optional per-tile background image (uploaded or via URL).
+            const bg = tile.type !== 'banner' ? (tile.config.bg_image as string | undefined) : undefined;
+            return (
+              <div
+                key={String(tile.id)}
+                className={`grid-item ${!tile.enabled ? 'grid-item--hidden' : ''} ${bg ? 'grid-item--bg' : ''}`}
+                style={bg ? ({ ['--tile-bg']: `url("${bg}")` } as CSSProperties) : undefined}
+              >
+                <TileView tile={tile} status={statuses[tile.id]} />
+                {canEdit && (
+                  <>
+                    <div className="tile-editcover" />
+                    <div className="tile-actions">
+                      <button className="btn btn--ghost btn--icon" onClick={() => setEditing(tile)} title="Edit tile">
+                        <Icon name="pen" />
+                      </button>
+                    </div>
+                    {!tile.enabled && <span className="tile-hidden-badge">Hidden</span>}
+                    <span className="tile-drag-hint"><Icon name="up-down-left-right" /></span>
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </ResponsiveGrid>
+      )}
 
       {canEdit && (
         <div className="palette-fab">

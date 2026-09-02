@@ -13,9 +13,9 @@ export const TILE_DEFAULTS: Record<
     h: 4,
   },
   heading: {
-    label: 'Heading',
+    label: 'Category / heading',
     icon: 'heading',
-    config: { text: 'Section', level: 2 },
+    config: { text: 'Category', level: 2, icon: '' },
     w: 12,
     h: 1,
   },

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Icon } from './Icon';
 import { useAuth } from '../auth/AuthContext';
 
@@ -11,23 +11,19 @@ import { useAuth } from '../auth/AuthContext';
 export function Header({ brand }: { brand: string }) {
   const { authed, editMode, setEditMode, logout } = useAuth();
   const [floating, setFloating] = useState(false);
-  const [hidden, setHidden] = useState(false);
-  const lastY = useRef(0);
 
   useEffect(() => {
+    // The header stays visible at all times; it only condenses into the
+    // floating pill once the page is scrolled a little.
     function onScroll() {
-      const y = window.scrollY;
-      setFloating(y > 40);
-      if (y > lastY.current && y > 300) setHidden(true);
-      else setHidden(false);
-      lastY.current = y;
+      setFloating(window.scrollY > 40);
     }
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
   return (
-    <header className={`header ${floating ? 'header--floating' : ''} ${hidden && !editMode ? 'header--hidden' : ''}`}>
+    <header className={`header ${floating ? 'header--floating' : ''}`}>
       <div className="container header__bar">
         <a className="brand" href="#top" aria-label={brand}>
           <img className="brand__logo" src="/logo.png" alt={brand} />

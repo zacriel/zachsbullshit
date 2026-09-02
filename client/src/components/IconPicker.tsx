@@ -14,8 +14,9 @@ const CHOICES: string[] = [
   // Solid
   'link', 'envelope', 'globe', 'house', 'server', 'cube', 'database', 'terminal',
   'code', 'code-branch', 'rss', 'feather', 'book', 'gamepad', 'heart', 'star',
-  'folder', 'image', 'music', 'video', 'gauge', 'wrench', 'cloud', 'shield-halved',
+  'folder', 'image', 'music', 'video', 'gauge', 'wrench', 'shield-halved',
   'network-wired', 'hard-drive', 'microchip', 'tower-broadcast', 'bolt', 'fire',
+  'cloud', 'cloud-arrow-up', 'cloud-arrow-down', 'server', 'circle-nodes',
 ];
 
 export function IconPicker({ value, onChange }: { value: string; onChange: (name: string) => void }) {
