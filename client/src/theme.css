@@ -1,5 +1,5 @@
 /* ============================================================
-   Zac Stambaugh — Hub theme
+   zachsbullshit — Hub theme
    Charcoal base, royal purple accents, flowing gradient ground.
    Single source of truth for design tokens + components.
    ============================================================ */
@@ -179,6 +179,7 @@ h1, h2, h3 {
   transform: translateY(-140%);
 }
 .header__bar {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -188,12 +189,29 @@ h1, h2, h3 {
   border: 1px solid transparent;
   transition: all 0.35s var(--ease);
 }
-/* condense into a floating glass pill once scrolled */
+.header__bar > * { position: relative; z-index: 1; }
+/* condense into a floating glass pill once scrolled. No real border; a
+   masked pseudo-outline hugs the rounded left/right sides and fades toward
+   the top/bottom tips (and the horizontal center) — like parentheses. */
 .header--floating .header__bar {
   background: var(--surface-glass);
   backdrop-filter: blur(18px) saturate(1.4);
-  border-color: var(--border);
-  box-shadow: var(--shadow);
+  border-color: transparent;
+  box-shadow: 0 14px 34px -22px rgba(0, 0, 0, 0.7);
+}
+.header--floating .header__bar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: 999px;
+  border: 1.5px solid rgba(168, 132, 255, 0.55);
+  pointer-events: none;
+  /* Keep only the vertical middle band of the outline, so the straight
+     top/bottom edges vanish and each rounded side shows as an arc that
+     fades out toward its tips. */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 35%, #000 65%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 35%, #000 65%, transparent 100%);
 }
 .brand {
   display: flex;
@@ -210,11 +228,23 @@ h1, h2, h3 {
   place-items: center;
   width: 38px;
   height: 38px;
-  border-radius: 12px;
+  border-radius: 10px;
   background: linear-gradient(145deg, var(--accent-bright), var(--accent-deep));
   box-shadow: var(--shadow-accent);
   color: #fff;
   font-size: 1rem;
+  overflow: hidden;
+}
+/* Free-standing logo, forced white so it reads on the dark ground. */
+.brand__logo {
+  height: 64px;
+  width: auto;
+  object-fit: contain;
+  display: block;
+  /* Negative vertical margins let the logo grow past the bar without
+     increasing the header's height. */
+  margin: -16px 0;
+  filter: brightness(0) invert(1);
 }
 .nav {
   display: flex;
@@ -528,7 +558,7 @@ h1, h2, h3 {
   justify-content: center;
   gap: 8px;
   padding: 11px 20px;
-  border-radius: 999px;
+  border-radius: 8px;
   border: 1px solid transparent;
   font-family: inherit;
   font-size: 0.9rem;
@@ -551,7 +581,7 @@ h1, h2, h3 {
 }
 .btn--ghost:hover { border-color: var(--accent-line); background: var(--surface-2); }
 .btn--sm { padding: 7px 13px; font-size: 0.82rem; }
-.btn--icon { padding: 9px; width: 38px; height: 38px; border-radius: 11px; }
+.btn--icon { padding: 9px; width: 38px; height: 38px; border-radius: 8px; }
 .btn--danger { background: transparent; border-color: var(--border); color: var(--down); }
 .btn--danger:hover { background: rgba(248, 113, 113, 0.12); }
 .btn:disabled { opacity: 0.55; cursor: not-allowed; }
@@ -568,6 +598,18 @@ h1, h2, h3 {
 .footer__inner { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
 .footer a { color: var(--text-muted); }
 .footer a:hover { color: var(--accent-bright); }
+.footer__admin {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.footer__admin:hover { color: var(--accent-bright); }
 
 /* ---------- States ---------- */
 .center-state {
@@ -784,6 +826,313 @@ h1, h2, h3 {
   .nav { display: none; }
   .jumbo { min-height: 82vh; padding-top: 100px; }
   .header__bar { padding-left: 16px; }
+}
+
+/* ============================================================
+   GRID DASHBOARD (tiles)
+   ============================================================ */
+.main--grid { padding-top: 92px; }
+.grid-wrap { position: relative; min-height: 60vh; }
+
+/* react-grid-layout placeholder + item basics */
+.react-grid-item.react-grid-placeholder {
+  background: var(--accent) !important;
+  opacity: 0.22;
+  border-radius: var(--radius);
+}
+.react-grid-item { transition: transform 0.18s var(--ease), width 0.18s var(--ease), height 0.18s var(--ease); }
+.react-grid-item.resizing, .react-grid-item.react-draggable-dragging { transition: none; z-index: 5; }
+
+.grid-item { position: relative; height: 100%; }
+.grid-item > .tile { height: 100%; }
+.grid-wrap--edit .grid-item { cursor: grab; }
+.grid-wrap--edit .react-draggable-dragging { cursor: grabbing; }
+.grid-item--hidden { opacity: 0.45; }
+
+/* edit affordances */
+.tile-editcover {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: var(--radius);
+}
+.tile-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 3;
+  display: flex;
+  gap: 6px;
+}
+.tile-actions .btn { box-shadow: var(--shadow); }
+.tile-drag-hint {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  z-index: 3;
+  color: var(--text-faint);
+  font-size: 0.8rem;
+  pointer-events: none;
+}
+.tile-hidden-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 3;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  color: var(--text-muted);
+}
+
+/* ---------- Tile: base card look ---------- */
+.tile {
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+/* ---------- Tile: banner ---------- */
+.tile--banner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 32px 40px;
+  background-color: var(--surface);
+  background-size: cover;
+  background-position: center;
+  border: 1px solid var(--border);
+}
+.tile--banner__scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(120deg, rgba(16,16,20,0.82), rgba(26,16,48,0.6) 60%, rgba(59,29,122,0.42));
+}
+.tile--banner__content { position: relative; z-index: 1; width: 100%; }
+.tile--banner__title {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(2rem, 5vw, 4rem);
+  line-height: 0.98;
+  letter-spacing: -0.03em;
+  background: linear-gradient(115deg, #fff 30%, var(--accent-bright));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.tile--banner__subtitle { color: var(--text-muted); font-size: clamp(1rem, 2vw, 1.3rem); margin: 14px 0 0; }
+
+/* ---------- Tile: heading ---------- */
+.tile--heading {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 4px 2px;
+  background: transparent;
+}
+.tile--heading h2 { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.02em; white-space: nowrap; }
+.tile--heading__rule { flex: 1; height: 1px; background: linear-gradient(90deg, var(--border-strong), transparent); }
+
+/* ---------- Tile: link ---------- */
+.tile--link {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 18px;
+  background: var(--surface-glass);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  transition: all 0.22s var(--ease);
+  position: relative;
+  overflow: hidden;
+}
+.tile--link:hover { border-color: var(--accent-line); box-shadow: var(--shadow); }
+
+/* ---------- Tile: project ---------- */
+.tile--project {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-glass);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  overflow: auto;
+}
+
+/* ---------- Tile: text ---------- */
+.tile--text {
+  padding: 22px;
+  background: var(--surface-glass);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  overflow: auto;
+}
+
+/* ---------- Tile: service / minecraft ---------- */
+.tile--service {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  background: var(--surface-glass);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+}
+.tile--service__head { display: flex; align-items: center; gap: 12px; }
+.tile--service__name { font-weight: 700; font-size: 1.05rem; }
+.tile--service__meta { display: flex; gap: 14px; align-items: center; font-size: 0.9rem; }
+.tile--service__motd {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-style: italic;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.tile--service__actions { margin-top: auto; }
+
+/* ---------- Add-tile palette ---------- */
+.palette-fab {
+  position: fixed;
+  right: 24px;
+  bottom: 92px;
+  z-index: 150;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+}
+.palette {
+  background: var(--surface-glass);
+  backdrop-filter: blur(18px) saturate(1.4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 10px;
+  width: 220px;
+  animation: rise 0.2s var(--ease);
+}
+.palette__title { margin: 4px 8px 8px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-faint); }
+.palette__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.14s var(--ease);
+}
+.palette__item:hover { background: var(--accent-soft); color: var(--accent-bright); }
+.palette__toggle { box-shadow: var(--shadow-accent); }
+
+@media (max-width: 680px) {
+  .palette-fab { right: 16px; bottom: 84px; }
+}
+
+/* ---------- Per-tile background image ---------- */
+.grid-item--bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-image: var(--tile-bg);
+  background-size: cover;
+  background-position: center;
+  border-radius: var(--radius);
+}
+.grid-item--bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: rgba(14, 14, 19, 0.58);
+  border-radius: var(--radius);
+}
+.grid-item--bg > .tile { position: relative; z-index: 1; }
+.grid-item--bg > .tile--link,
+.grid-item--bg > .tile--service,
+.grid-item--bg > .tile--project,
+.grid-item--bg > .tile--text,
+.grid-item--bg > .tile--contact {
+  background-color: transparent;
+  backdrop-filter: none;
+  border-color: rgba(255, 255, 255, 0.16);
+}
+.grid-item--bg > .tile--heading { background: transparent; }
+
+/* ---------- Contact tile ---------- */
+.tile--contact {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+  background: var(--surface-glass);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  overflow: auto;
+}
+.tile--contact__head h3 { font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; }
+.tile--contact__head p { margin: 4px 0 0; font-size: 0.88rem; }
+.tile--contact__form { display: flex; flex-direction: column; gap: 10px; }
+.tile--contact__form .textarea { min-height: 90px; }
+.tile--contact__done { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; color: var(--text-muted); }
+
+/* ---------- Icon picker ---------- */
+.iconpicker { display: flex; flex-direction: column; gap: 10px; }
+.iconpicker__row { display: flex; align-items: center; gap: 10px; }
+.iconpicker__current {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+  color: var(--accent-bright);
+  font-size: 1.05rem;
+}
+.iconpicker__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(38px, 1fr));
+  gap: 6px;
+  max-height: 168px;
+  overflow-y: auto;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-2);
+}
+.iconpicker__item {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.13s var(--ease);
+}
+.iconpicker__item:hover { color: var(--text); border-color: var(--border-strong); }
+.iconpicker__item--sel {
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent-bright);
 }
 
 @media (prefers-reduced-motion: reduce) {

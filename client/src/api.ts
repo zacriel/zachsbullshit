@@ -61,6 +61,24 @@ export const api = {
   del: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
 };
 
+/** Uploads an image for a tile background; returns its served URL. */
+export async function uploadImage(file: File): Promise<string> {
+  const fd = new FormData();
+  fd.append('file', file);
+  const headers = new Headers();
+  const token = getToken();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  const resp = await fetch('/api/tiles/upload', {
+    method: 'POST',
+    body: fd, // browser sets multipart Content-Type + boundary
+    headers,
+    credentials: 'include',
+  });
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok) throw new ApiError(resp.status, (data as { error?: string }).error || 'Upload failed');
+  return (data as { url: string }).url;
+}
+
 /** Fire-and-forget click tracking (never throws into the UI). */
 export function trackClick(linkId: number): void {
   try {

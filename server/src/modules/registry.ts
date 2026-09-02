@@ -2,6 +2,7 @@ import { Router } from 'express';
 import type { HubModule, ModuleContext, ModuleManifestEntry } from '../types';
 import { createLogger } from '../logger';
 
+import dashboardModule from './dashboard';
 import linksModule from './links';
 import projectsModule from './projects';
 import aboutModule from './about';
@@ -13,6 +14,7 @@ const log = createLogger('registry');
 
 /** Every module that exists in the codebase, enabled or not. */
 const ALL_MODULES: HubModule[] = [
+  dashboardModule,
   linksModule,
   projectsModule,
   aboutModule,

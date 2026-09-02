@@ -32,14 +32,23 @@ export interface Config {
   };
   modules: Record<string, boolean>;
   healthIntervalMs: number;
+  uploadsPath: string;
 }
+
+const databasePath = process.env.DATABASE_PATH
+  ? path.resolve(process.env.DATABASE_PATH)
+  : path.resolve(process.cwd(), 'data', 'hub.sqlite');
+
+// Uploaded images sit next to the database so they persist on the same
+// Railway volume. Override with UPLOADS_PATH if needed.
+const uploadsPath = process.env.UPLOADS_PATH
+  ? path.resolve(process.env.UPLOADS_PATH)
+  : path.join(path.dirname(databasePath), 'uploads');
 
 export const config: Config = {
   isProd,
   port: int(process.env.PORT, 4000),
-  databasePath: process.env.DATABASE_PATH
-    ? path.resolve(process.env.DATABASE_PATH)
-    : path.resolve(process.cwd(), 'data', 'hub.sqlite'),
+  databasePath,
   // In prod the compiled server lives in server/dist, so the client build
   // is two levels up. Override with CLIENT_DIST for split deployments.
   clientDist: process.env.CLIENT_DIST
@@ -53,14 +62,19 @@ export const config: Config = {
     jwtExpiresIn: process.env.JWT_EXPIRES_IN || '12h',
   },
   modules: {
-    links: flag(process.env.MODULE_LINKS),
-    projects: flag(process.env.MODULE_PROJECTS),
-    about: flag(process.env.MODULE_ABOUT),
-    contact: flag(process.env.MODULE_CONTACT),
-    health: flag(process.env.MODULE_HEALTH),
+    // The tile dashboard is the primary content system.
+    tiles: flag(process.env.MODULE_TILES),
     analytics: flag(process.env.MODULE_ANALYTICS),
+    // Contact backs the contact tile.
+    contact: flag(process.env.MODULE_CONTACT),
+    // Legacy section modules — superseded by tiles, off unless explicitly enabled.
+    links: flag(process.env.MODULE_LINKS, false),
+    projects: flag(process.env.MODULE_PROJECTS, false),
+    about: flag(process.env.MODULE_ABOUT, false),
+    health: flag(process.env.MODULE_HEALTH, false),
   },
   healthIntervalMs: int(process.env.HEALTH_INTERVAL_MS, 60000),
+  uploadsPath,
 };
 
 /** Fail fast on insecure production config. */

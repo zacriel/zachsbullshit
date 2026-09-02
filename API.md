@@ -38,14 +38,50 @@ frontend reads the manifest and hides what isn't there.
 
 | id | Name | Public UI | Env flag | Purpose |
 |----|------|-----------|----------|---------|
-| `links` | Links | ✅ | `MODULE_LINKS` | Navigational hub grid |
-| `projects` | Projects | ✅ | `MODULE_PROJECTS` | Portfolio cards |
-| `about` | About | ✅ | `MODULE_ABOUT` | Hero bio + skills |
-| `contact` | Contact | ✅ | `MODULE_CONTACT` | Public form + admin inbox |
-| `health` | Health | ⛔ (admin only) | `MODULE_HEALTH` | Service uptime checks |
-| `analytics` | Analytics | ⛔ (admin only) | `MODULE_ANALYTICS` | Link-click tracking |
+| `tiles` | Dashboard | ✅ | `MODULE_TILES` | **The grid of tiles that makes up the site.** Drag/resize dashboard; service + Minecraft status |
+| `analytics` | Analytics | ⛔ (admin only) | `MODULE_ANALYTICS` | Tile/link-click tracking |
+| `contact` | Contact | ✅ | `MODULE_CONTACT` | Public form + admin inbox *(legacy, off by default)* |
+| `links` | Links | ✅ | `MODULE_LINKS` | *(legacy section — superseded by tiles, off by default)* |
+| `projects` | Projects | ✅ | `MODULE_PROJECTS` | *(legacy section — superseded by tiles, off by default)* |
+| `about` | About | ✅ | `MODULE_ABOUT` | *(legacy section — superseded by tiles, off by default)* |
+| `health` | Health | ⛔ (admin only) | `MODULE_HEALTH` | *(legacy — status now lives on service tiles, off by default)* |
 
-All flags default to `true`. Set a flag to `false`/`0`/`off` to disable.
+`MODULE_TILES` and `MODULE_ANALYTICS` default **on**; the rest default **off**
+(set a flag to `true` to re-enable). `false`/`0`/`off` disables.
+
+---
+
+## Dashboard / tiles module (`/api/tiles`)
+
+The primary content system: a grid of tiles, each with a `type`, a JSON
+`config`, a grid position (`x, y, w, h`), and `enabled`. Tile types:
+`link`, `banner`, `service`, `project`, `text`, `heading`, `contact`.
+
+Any non-banner tile may set `config.bg_image` (a URL, or an uploaded image's
+returned URL) for a per-tile background; banners use `config.image_url` and a
+`config.parallax` boolean (fixed vs. static). `contact` tiles post to the
+contact module, so `MODULE_CONTACT` must be enabled (it is by default).
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/api/tiles` | — | Enabled tiles, ordered for layout. |
+| `GET` | `/api/tiles/status` | — | Latest status snapshot for service tiles: `{ statuses: { [tileId]: { status, code, latency_ms, players_online, players_max, motd, version, checked_at } } }`. |
+| `GET` | `/api/tiles/all` | ✅ | All tiles incl. disabled. |
+| `POST` | `/api/tiles` | ✅ | Create a tile `{ type, config, x, y, w, h, enabled }`. |
+| `POST` | `/api/tiles/upload` | ✅ | Upload an image (multipart `file`, ≤5 MB). Returns `{ url }` served from `/uploads/…` (stored on the volume). |
+| `PUT` | `/api/tiles/layout` | ✅ | Bulk-save grid positions: `{ layout: [{ i, x, y, w, h }] }`. |
+| `PUT` | `/api/tiles/:id` | ✅ | Update a tile's `config` / `enabled` / position. |
+| `DELETE` | `/api/tiles/:id` | ✅ | Delete a tile. |
+| `POST` | `/api/tiles/status/refresh` | ✅ | Re-check all service tiles now. |
+
+Uploaded images are served as static files from `/uploads` (path set by
+`UPLOADS_PATH`, defaulting next to the database so they persist on the same
+Railway volume).
+
+**Service tiles** are polled every `HEALTH_INTERVAL_MS`. `kind: "web"` does an
+HTTP probe (up/degraded/down + latency + code); `kind: "minecraft"` does a
+native Server List Ping over TCP (`host`, optional `port`, SRV-aware) and
+returns online/offline + player count + MOTD + version — no third-party service.
 
 ---
 

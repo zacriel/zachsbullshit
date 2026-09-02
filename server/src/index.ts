@@ -60,6 +60,10 @@ function main(): void {
   // 404 for unmatched API routes (before SPA fallback).
   app.use('/api', (_req, res) => res.status(404).json({ error: 'Not found' }));
 
+  // Serve uploaded images (persisted on the volume alongside the database).
+  if (!fs.existsSync(config.uploadsPath)) fs.mkdirSync(config.uploadsPath, { recursive: true });
+  app.use('/uploads', express.static(config.uploadsPath, { maxAge: '7d', immutable: true }));
+
   // Serve the built client in production (single-service deploy).
   if (fs.existsSync(config.clientDist)) {
     app.use(express.static(config.clientDist));

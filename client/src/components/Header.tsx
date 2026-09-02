@@ -1,22 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from './Icon';
 import { useAuth } from '../auth/AuthContext';
-import type { ModuleManifestEntry } from '../types';
 
 /**
- * Floating header. At the top of the page it sits flush and transparent;
- * once scrolled it condenses into a glass pill. It hides when scrolling
- * down and reveals when scrolling up.
+ * Floating header. Flush and transparent at the top; once scrolled it
+ * condenses into a glass pill, hides on scroll-down and reappears on
+ * scroll-up. Admin controls appear when signed in; signing in itself lives
+ * in the footer, so the public header stays clean.
  */
-export function Header({
-  brand,
-  modules,
-  onSignIn,
-}: {
-  brand: string;
-  modules: ModuleManifestEntry[];
-  onSignIn: () => void;
-}) {
+export function Header({ brand }: { brand: string }) {
   const { authed, editMode, setEditMode, logout } = useAuth();
   const [floating, setFloating] = useState(false);
   const [hidden, setHidden] = useState(false);
@@ -26,7 +18,6 @@ export function Header({
     function onScroll() {
       const y = window.scrollY;
       setFloating(y > 40);
-      // Hide on downward scroll past the hero; always show near the top.
       if (y > lastY.current && y > 300) setHidden(true);
       else setHidden(false);
       lastY.current = y;
@@ -35,51 +26,30 @@ export function Header({
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  const navItems = modules.filter((m) => ['links', 'projects', 'about', 'contact'].includes(m.id));
-
   return (
-    <header
-      className={`header ${floating ? 'header--floating' : ''} ${hidden && !editMode ? 'header--hidden' : ''}`}
-    >
+    <header className={`header ${floating ? 'header--floating' : ''} ${hidden && !editMode ? 'header--hidden' : ''}`}>
       <div className="container header__bar">
-        <a className="brand" href="#top">
-          <span className="brand__mark">
-            <Icon name="bolt" />
-          </span>
-          {brand}
+        <a className="brand" href="#top" aria-label={brand}>
+          <img className="brand__logo" src="/logo.png" alt={brand} />
         </a>
 
-        <nav className="nav">
-          {navItems.map((m) => (
-            <a key={m.id} href={`#${m.id}`}>
-              {m.name}
-            </a>
-          ))}
-        </nav>
-
-        <div className="header__actions">
-          {authed ? (
-            <>
-              <button
-                className={`btn btn--ghost btn--sm ${editMode ? 'edit-toggle--on' : ''}`}
-                onClick={() => setEditMode(!editMode)}
-                title={editMode ? 'Exit edit mode' : 'Edit this page'}
-              >
-                <Icon name={editMode ? 'check' : 'pen-to-square'} /> {editMode ? 'Done' : 'Edit'}
-              </button>
-              <a className="btn btn--ghost btn--icon" href="/admin" title="Dashboard (messages, health, analytics)">
-                <Icon name="gauge-high" />
-              </a>
-              <button className="btn btn--ghost btn--icon" onClick={logout} title="Sign out">
-                <Icon name="right-from-bracket" />
-              </button>
-            </>
-          ) : (
-            <button className="btn btn--ghost btn--sm" onClick={onSignIn} title="Admin sign in">
-              <Icon name="lock" /> Sign in
+        {authed && (
+          <div className="header__actions">
+            <button
+              className={`btn btn--ghost btn--sm ${editMode ? 'edit-toggle--on' : ''}`}
+              onClick={() => setEditMode(!editMode)}
+              title={editMode ? 'Exit edit mode' : 'Edit dashboard'}
+            >
+              <Icon name={editMode ? 'check' : 'pen-to-square'} /> {editMode ? 'Done' : 'Edit'}
             </button>
-          )}
-        </div>
+            <a className="btn btn--ghost btn--icon" href="/admin" title="Dashboard (messages, analytics)">
+              <Icon name="gauge-high" />
+            </a>
+            <button className="btn btn--ghost btn--icon" onClick={logout} title="Sign out">
+              <Icon name="right-from-bracket" />
+            </button>
+          </div>
+        )}
       </div>
     </header>
   );

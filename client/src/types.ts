@@ -5,6 +5,31 @@ export interface ModuleManifestEntry {
   public: boolean;
 }
 
+export type TileType = 'link' | 'banner' | 'service' | 'project' | 'text' | 'heading' | 'contact';
+
+export interface Tile {
+  id: number;
+  type: TileType;
+  // Free-form, type-specific configuration (label/url/icon, host/kind, etc.).
+  config: Record<string, any>;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  enabled: boolean;
+}
+
+export interface ServiceStatus {
+  status: 'up' | 'degraded' | 'down' | null;
+  code: number | null;
+  latency_ms: number | null;
+  players_online: number | null;
+  players_max: number | null;
+  motd: string | null;
+  version: string | null;
+  checked_at: string | null;
+}
+
 export interface LinkItem {
   id: number;
   label: string;
