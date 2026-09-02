@@ -14,7 +14,7 @@ if errorlevel 1 (
   echo  This folder is not a git repository yet.
   echo  Set it up once with:
   echo      git init
-  echo      git remote add origin https://github.com/^<you^>/^<repo^>.git
+  echo      git remote add origin https://github.com/zacriel/zachsbullshit.git
   echo.
   pause
   exit /b 1
