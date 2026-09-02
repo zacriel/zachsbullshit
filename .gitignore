@@ -1,0 +1,29 @@
+# dependencies
+node_modules/
+**/node_modules/
+
+# build output
+server/dist/
+client/dist/
+client/dist_verify/
+*.tsbuildinfo
+vite.config.ts.timestamp-*
+
+# data & secrets
+*.sqlite
+*.sqlite3
+*.db
+data/
+.env
+**/.env
+!**/.env.example
+
+# logs
+*.log
+npm-debug.log*
+
+# editor / os
+.DS_Store
+.vscode/
+.idea/
+Thumbs.db

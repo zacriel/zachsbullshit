@@ -1,0 +1,16 @@
+# Nixpacks build plan for Railway (single service: API serves the built SPA).
+# The root `npm run build` installs both workspaces (incl. dev deps),
+# builds the client, then compiles the server to dist/.
+
+[phases.setup]
+nixPkgs = ["nodejs_20"]
+
+[phases.install]
+# Install root dev dep (concurrently) only; workspaces are installed by build.
+cmds = ["npm install --include=dev --no-audit --no-fund"]
+
+[phases.build]
+cmds = ["npm run build"]
+
+[start]
+cmd = "npm start"

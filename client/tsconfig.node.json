@@ -1,0 +1,10 @@
+{
+  "//": "Reserved for tooling. The main tsconfig.json type-checks src + vite.config.ts directly.",
+  "compilerOptions": {
+    "skipLibCheck": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "noEmit": true
+  },
+  "files": []
+}
