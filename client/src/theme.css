@@ -834,7 +834,7 @@ h1, h2, h3 {
 /* ============================================================
    GRID DASHBOARD (tiles)
    ============================================================ */
-.main--grid { padding-top: 92px; }
+.main--grid { padding-top: 74px; }
 .grid-wrap { position: relative; min-height: 60vh; }
 
 /* react-grid-layout placeholder + item basics */
@@ -1087,7 +1087,7 @@ h1, h2, h3 {
 
 @media (max-width: 767px) {
   .container { padding: 0 16px; }
-  .main--grid { padding-top: 78px; }
+  .main--grid { padding-top: 64px; }
   .tile--banner { padding: 26px 22px; min-height: 220px; }
   .tile--banner__title { font-size: clamp(2rem, 9vw, 3rem); }
   /* Header pill hugs the screen a little tighter. */
