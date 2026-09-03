@@ -242,11 +242,13 @@ h1, h2, h3 {
   height: 72px;
   width: auto;
   object-fit: contain;
+  object-position: center;
   display: block;
+  align-self: center;
   filter: brightness(0) invert(1);
   transition: height 0.35s var(--ease);
 }
-.header--floating .brand__logo { height: 46px; }
+.header--floating .brand__logo { height: 56px; }
 .nav {
   display: flex;
   gap: 2px;
@@ -1392,7 +1394,7 @@ h1, h2, h3 {
   /* Header pill hugs the screen a little tighter. */
   .header { padding: 10px 0; }
   .brand__logo { height: 52px; }
-  .header--floating .brand__logo { height: 40px; }
+  .header--floating .brand__logo { height: 48px; }
   /* Command snippets: wrap instead of forcing a horizontal scroll. */
   .tile--command__code { white-space: pre-wrap; word-break: break-word; }
   .tile--clock__time { font-size: clamp(1.3rem, 6vw, 2rem); }
