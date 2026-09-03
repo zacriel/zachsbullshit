@@ -235,17 +235,18 @@ h1, h2, h3 {
   font-size: 1rem;
   overflow: hidden;
 }
-/* Free-standing logo, forced white so it reads on the dark ground. */
+/* Free-standing logo, forced white so it reads on the dark ground.
+   Larger at the top of the page; shrinks cleanly when the header condenses
+   into its floating pill. */
 .brand__logo {
-  height: 64px;
+  height: 72px;
   width: auto;
   object-fit: contain;
   display: block;
-  /* Negative vertical margins let the logo grow past the bar without
-     increasing the header's height. */
-  margin: -16px 0;
   filter: brightness(0) invert(1);
+  transition: height 0.35s var(--ease);
 }
+.header--floating .brand__logo { height: 46px; }
 .nav {
   display: flex;
   gap: 2px;
@@ -1351,25 +1352,37 @@ h1, h2, h3 {
 }
 
 /* ---------- Mobile: natural-height vertical stack ---------- */
+/* Mobile = a 2-column bento: small tiles pair up, wide types span the row. */
 .stack {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  align-items: start;
 }
-.stack-item {
-  position: relative;
-}
-/* Tiles size to their content on mobile (no fixed grid rows). */
+.stack-item { position: relative; min-width: 0; }
+.stack-item--wide { grid-column: 1 / -1; }
+/* Everything sizes to its content on mobile (no fixed grid rows). */
+.stack-item > .tile { height: auto; }
+/* Comfortable minimums so small tiles read as cards, not thin strips. */
 .stack-item > .tile--link,
+.stack-item > .tile--icons,
+.stack-item > .tile--command,
+.stack-item > .tile--clock,
+.stack-item > .tile--weather { min-height: 116px; }
 .stack-item > .tile--service,
-.stack-item > .tile--contact,
-.stack-item > .tile--text,
-.stack-item > .tile--project {
-  height: auto;
-}
+.stack-item > .tile--download { min-height: 150px; }
 .stack-item > .tile--heading { padding: 8px 2px 2px; }
 .stack-item > .tile--project { overflow: visible; }
 .stack-item .tile--service__motd { -webkit-line-clamp: 4; }
+/* Embeds have no intrinsic height — a 16:9 box (they span full width). */
+.stack-item > .tile--embed { aspect-ratio: 16 / 9; }
+.stack-item > .tile--rss { max-height: 60vh; }
+.stack-item > .tile--icons { justify-content: center; }
+.stack-item > .tile--command { justify-content: center; }
+/* Narrow phones: fall back to a single column. */
+@media (max-width: 430px) {
+  .stack { grid-template-columns: 1fr; }
+}
 
 @media (max-width: 767px) {
   .container { padding: 0 16px; }
@@ -1378,6 +1391,13 @@ h1, h2, h3 {
   .tile--banner__title { font-size: clamp(2rem, 9vw, 3rem); }
   /* Header pill hugs the screen a little tighter. */
   .header { padding: 10px 0; }
+  .brand__logo { height: 52px; }
+  .header--floating .brand__logo { height: 40px; }
+  /* Command snippets: wrap instead of forcing a horizontal scroll. */
+  .tile--command__code { white-space: pre-wrap; word-break: break-word; }
+  .tile--clock__time { font-size: clamp(1.3rem, 6vw, 2rem); }
+  .tile--weather__temp { font-size: 2rem; }
+  .tile--clock, .tile--weather { padding: 14px 12px; }
 }
 
 /* ---------- Per-tile background image ---------- */

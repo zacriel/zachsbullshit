@@ -13,6 +13,9 @@ const ResponsiveGrid = WidthProvider(Responsive);
 const COLS = 12;
 const ROW_H = 92;
 
+// Tile types that take the full row in the mobile 2-column layout.
+const MOBILE_WIDE = new Set<string>(['banner', 'heading', 'embed', 'contact', 'rss', 'project', 'text']);
+
 /**
  * Content-aware minimum grid size for a tile, so it can't be resized small
  * enough to clip its contents. Grows with the amount of text a tile holds.
@@ -212,10 +215,12 @@ export function GridCanvas() {
             .map((tile) => {
               const bg = tile.type !== 'banner' ? (tile.config.bg_image as string | undefined) : undefined;
               const vid = isVideo(bg);
+              // On mobile, small tiles pair up 2-across; wide ones span the row.
+              const wide = MOBILE_WIDE.has(tile.type);
               return (
                 <div
                   key={String(tile.id)}
-                  className={`stack-item ${!tile.enabled ? 'grid-item--hidden' : ''} ${bg ? 'grid-item--bg' : ''} ${tile.config.floating ? 'is-floating' : ''}`}
+                  className={`stack-item ${wide ? 'stack-item--wide' : ''} ${!tile.enabled ? 'grid-item--hidden' : ''} ${bg ? 'grid-item--bg' : ''} ${tile.config.floating ? 'is-floating' : ''}`}
                   style={bg && !vid ? ({ ['--tile-bg']: `url("${bg}")` } as CSSProperties) : undefined}
                 >
                   {bg && vid && <TileMedia src={bg!} audio={!!tile.config.bg_audio} />}
