@@ -891,6 +891,94 @@ h1, h2, h3 {
   color: var(--text-muted);
 }
 
+/* resize handles in edit mode */
+.grid-wrap--edit .react-resizable-handle {
+  position: absolute;
+  z-index: 10;
+}
+
+.grid-wrap--edit .react-resizable-handle-s {
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 14px;
+  cursor: ns-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.grid-wrap--edit .react-resizable-handle-s::after {
+  content: '';
+  display: block;
+  width: 40px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--border-strong);
+  opacity: 0.7;
+  transition: all 0.15s ease;
+}
+.grid-wrap--edit .react-grid-item:hover .react-resizable-handle-s::after,
+.grid-wrap--edit .react-resizable-handle-s:hover::after {
+  opacity: 1;
+  background: var(--accent-bright);
+  width: 56px;
+  box-shadow: 0 0 8px var(--accent-soft);
+}
+
+.grid-wrap--edit .react-resizable-handle-e {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 14px;
+  cursor: ew-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.grid-wrap--edit .react-resizable-handle-e::after {
+  content: '';
+  display: block;
+  width: 4px;
+  height: 40px;
+  border-radius: 999px;
+  background: var(--border-strong);
+  opacity: 0.7;
+  transition: all 0.15s ease;
+}
+.grid-wrap--edit .react-grid-item:hover .react-resizable-handle-e::after,
+.grid-wrap--edit .react-resizable-handle-e:hover::after {
+  opacity: 1;
+  background: var(--accent-bright);
+  height: 56px;
+  box-shadow: 0 0 8px var(--accent-soft);
+}
+
+.grid-wrap--edit .react-resizable-handle-se {
+  bottom: 0;
+  right: 0;
+  width: 24px;
+  height: 24px;
+  cursor: nwse-resize;
+  z-index: 11;
+}
+.grid-wrap--edit .react-resizable-handle-se::after {
+  content: '';
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  width: 9px;
+  height: 9px;
+  border-right: 2px solid var(--border-strong);
+  border-bottom: 2px solid var(--border-strong);
+  border-bottom-right-radius: 2px;
+  transition: all 0.15s ease;
+}
+.grid-wrap--edit .react-grid-item:hover .react-resizable-handle-se::after,
+.grid-wrap--edit .react-resizable-handle-se:hover::after {
+  border-color: var(--accent-bright);
+  box-shadow: 2px 2px 4px var(--accent-soft);
+}
+
 /* ---------- Tile: base card look ---------- */
 .tile {
   border-radius: var(--radius);

@@ -17,29 +17,23 @@ const ROW_H = 92;
  * enough to clip its contents. Grows with the amount of text a tile holds.
  */
 function tileMins(t: Tile): { minW: number; minH: number } {
-  const c = t.config || {};
-  const len = (v: unknown) => (typeof v === 'string' ? v.length : 0);
   switch (t.type) {
     case 'banner':
-      return { minW: 6, minH: 3 };
+      return { minW: 4, minH: 2 };
     case 'heading':
       return { minW: 2, minH: 1 };
     case 'link':
-      return { minW: 3, minH: len(c.description) > 40 ? 3 : 2 };
+      return { minW: 2, minH: 1 };
     case 'service':
-      return { minW: 3, minH: 3 };
-    case 'project': {
-      const tags = Array.isArray(c.tags) ? c.tags.length : 0;
-      return { minW: tags > 4 ? 4 : 3, minH: len(c.description) > 120 ? 5 : 4 };
-    }
-    case 'text': {
-      const chars = len(c.body);
-      return { minW: 3, minH: Math.max(2, Math.min(8, 2 + Math.floor(chars / 160))) };
-    }
-    case 'contact':
-      return { minW: 4, minH: 6 };
-    default:
       return { minW: 2, minH: 2 };
+    case 'project':
+      return { minW: 2, minH: 2 };
+    case 'text':
+      return { minW: 2, minH: 1 };
+    case 'contact':
+      return { minW: 3, minH: 3 };
+    default:
+      return { minW: 1, minH: 1 };
   }
 }
 
@@ -157,10 +151,13 @@ export function GridCanvas() {
     }
   }
 
-  async function saveTile(config: Record<string, any>, enabled: boolean) {
+  async function saveTile(config: Record<string, any>, enabled: boolean, w?: number, h?: number) {
     if (!editing) return;
     try {
-      const { tile } = await api.put<{ tile: Tile }>(`/tiles/${editing.id}`, { config, enabled });
+      const payload: { config: Record<string, any>; enabled: boolean; w?: number; h?: number } = { config, enabled };
+      if (w !== undefined) payload.w = w;
+      if (h !== undefined) payload.h = h;
+      const { tile } = await api.put<{ tile: Tile }>(`/tiles/${editing.id}`, payload);
       setTiles((prev) => (prev ? prev.map((t) => (t.id === tile.id ? tile : t)) : prev));
       setEditing(null);
       notify('Saved');
@@ -230,6 +227,7 @@ export function GridCanvas() {
           margin={[16, 16]}
           isDraggable={canEdit}
           isResizable={canEdit}
+          resizeHandles={['s', 'e', 'se']}
           draggableCancel=".tile-actions,.tile-actions *"
           compactType="vertical"
           onDragStop={(l) => persistLayout(l)}

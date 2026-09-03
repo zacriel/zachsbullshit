@@ -13,13 +13,15 @@ export function TileEditor({
   onClose,
 }: {
   tile: Tile;
-  onSave: (config: Record<string, any>, enabled: boolean) => void;
+  onSave: (config: Record<string, any>, enabled: boolean, w?: number, h?: number) => void;
   onDelete: () => void;
   onClose: () => void;
 }) {
   const { notify } = useAuth();
   const [config, setConfig] = useState<Record<string, any>>({ ...tile.config });
   const [enabled, setEnabled] = useState(tile.enabled);
+  const [w, setW] = useState(tile.w || 3);
+  const [h, setH] = useState(tile.h || 2);
 
   const set = (key: string, value: unknown) => setConfig((c) => ({ ...c, [key]: value }));
 
@@ -130,6 +132,29 @@ export function TileEditor({
           {tile.type !== 'banner' && (
             <ImageField label="Tile background (optional)" value={config.bg_image || ''} onChange={(v) => set('bg_image', v)} notify={notify} />
           )}
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 4 }}>
+            <Field label="Width (1–12 cols)">
+              <input
+                type="number"
+                className="input"
+                min={1}
+                max={12}
+                value={w}
+                onChange={(e) => setW(Math.max(1, Math.min(12, Number(e.target.value) || 1)))}
+              />
+            </Field>
+            <Field label="Height (rows)">
+              <input
+                type="number"
+                className="input"
+                min={1}
+                max={24}
+                value={h}
+                onChange={(e) => setH(Math.max(1, Math.min(24, Number(e.target.value) || 1)))}
+              />
+            </Field>
+          </div>
         </div>
 
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '14px 0 4px', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
@@ -143,7 +168,7 @@ export function TileEditor({
           </button>
           <span style={{ flex: 1 }} />
           <button className="btn btn--ghost" onClick={onClose}>Cancel</button>
-          <button className="btn btn--primary" onClick={() => onSave(config, enabled)}>
+          <button className="btn btn--primary" onClick={() => onSave(config, enabled, w, h)}>
             <Icon name="floppy-disk" /> Save
           </button>
         </div>
