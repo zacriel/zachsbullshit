@@ -39,8 +39,8 @@ function PublicSite() {
           <div className="container">
             <GridCanvas />
           </div>
-          <Footer brand={BRAND} onSignIn={() => setShowLogin(true)} />
         </main>
+        <Footer brand={BRAND} onSignIn={() => setShowLogin(true)} />
       </div>
 
       {editMode && (

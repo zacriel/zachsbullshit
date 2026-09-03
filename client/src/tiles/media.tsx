@@ -38,7 +38,7 @@ export function TileMedia({
       const vh = window.innerHeight || document.documentElement.clientHeight;
       // How far the layer's center is from the viewport center.
       const offset = rect.top + rect.height / 2 - vh / 2;
-      el.style.transform = `translate3d(0, ${offset * -0.08}px, 0)`;
+      el.style.transform = `translate3d(0, ${offset * -0.15}px, 0)`;
     };
     const onScroll = () => {
       if (!raf) raf = requestAnimationFrame(update);
