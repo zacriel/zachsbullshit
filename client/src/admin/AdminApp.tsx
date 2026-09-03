@@ -5,6 +5,8 @@ import { Login } from './Login';
 import { ContactAdmin } from './ContactAdmin';
 import { HealthAdmin } from './HealthAdmin';
 import { AnalyticsAdmin } from './AnalyticsAdmin';
+import { SystemAdmin } from './SystemAdmin';
+import { FilesAdmin } from './FilesAdmin';
 import type { ModuleManifestEntry } from '../types';
 
 type NotifyFn = (message: string, isError?: boolean) => void;
@@ -23,6 +25,12 @@ const TAB_DEFS: TabDef[] = [
   { id: 'contact', label: 'Messages', icon: 'envelope', render: (n) => <ContactAdmin notify={n} /> },
   { id: 'health', label: 'Health', icon: 'heart-pulse', render: (n) => <HealthAdmin notify={n} /> },
   { id: 'analytics', label: 'Analytics', icon: 'chart-line', render: () => <AnalyticsAdmin /> },
+];
+
+// Always available (not tied to a toggleable module).
+const ALWAYS_TABS: TabDef[] = [
+  { id: 'files', label: 'Files', icon: 'folder-open', render: (n) => <FilesAdmin notify={n} /> },
+  { id: 'system', label: 'System', icon: 'server', render: (n) => <SystemAdmin notify={n} /> },
 ];
 
 export function AdminApp() {
@@ -78,7 +86,7 @@ export function AdminApp() {
   }
   if (!authed) return <Login onAuthed={() => setAuthed(true)} />;
 
-  const tabs = TAB_DEFS.filter((t) => modules.some((m) => m.id === t.id));
+  const tabs = [...TAB_DEFS.filter((t) => modules.some((m) => m.id === t.id)), ...ALWAYS_TABS];
   const current = tabs.find((t) => t.id === active) || tabs[0];
 
   return (

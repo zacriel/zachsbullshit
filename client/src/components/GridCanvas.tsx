@@ -33,6 +33,20 @@ function tileMins(t: Tile): { minW: number; minH: number } {
       return { minW: 2, minH: 1 };
     case 'contact':
       return { minW: 3, minH: 3 };
+    case 'icons':
+      return { minW: 2, minH: 1 };
+    case 'download':
+      return { minW: 2, minH: 2 };
+    case 'embed':
+      return { minW: 3, minH: 3 };
+    case 'command':
+      return { minW: 2, minH: 1 };
+    case 'clock':
+      return { minW: 2, minH: 1 };
+    case 'weather':
+      return { minW: 2, minH: 2 };
+    case 'rss':
+      return { minW: 2, minH: 2 };
     default:
       return { minW: 1, minH: 1 };
   }

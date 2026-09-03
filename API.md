@@ -55,7 +55,14 @@ frontend reads the manifest and hides what isn't there.
 
 The primary content system: a grid of tiles, each with a `type`, a JSON
 `config`, a grid position (`x, y, w, h`), and `enabled`. Tile types:
-`link`, `banner`, `service`, `project`, `text`, `heading`, `contact`.
+`link`, `banner` (single image/video **or** a cross-fade/Ken-Burns slideshow),
+`service`, `project`, `text`, `heading`, `contact`, `icons` (icon-only link row),
+`download` (file download, optional server-side password), `embed` (allow-listed
+iframe: YouTube/Vimeo/Maps/CodePen/Spotify…), `command` (copy-to-clipboard
+snippet), `clock` (live clock or countdown), `weather` (Open-Meteo), `rss`
+(RSS/Atom feed). A download tile's `password` is write-only — hashed with bcrypt
+into `download_secrets`, never returned; the file lives outside the public
+`/uploads` dir and is reachable only through the gated route below.
 
 Any non-banner tile may set `config.bg_image` (a URL, or an uploaded image/video
 URL) for a per-tile background — images and MP4/WebM video both work, with
@@ -70,6 +77,11 @@ tiles post to the contact module, so `MODULE_CONTACT` must be enabled (default o
 | `GET` | `/api/tiles/all` | ✅ | All tiles incl. disabled. |
 | `POST` | `/api/tiles` | ✅ | Create a tile `{ type, config, x, y, w, h, enabled }`. |
 | `POST` | `/api/tiles/upload` | ✅ | Upload an image or MP4/WebM video (multipart `file`, ≤64 MB). Returns `{ url }` served from `/uploads/…` (stored on the volume). |
+| `POST` | `/api/tiles/upload-file` | ✅ | Upload any file for a download tile (multipart `file`, ≤200 MB). Returns `{ file, filename, size }`; stored in a non-public dir. |
+| `POST` | `/api/tiles/:id/download` | — | Download a `download` tile's file. Body `{ password }` required when the tile is protected. Streams the file as an attachment. |
+| `GET` | `/api/tiles/weather?lat=&lon=` | — | Current conditions via Open-Meteo. |
+| `GET` | `/api/tiles/geocode?q=` | ✅ | Place-name → coordinates (Open-Meteo geocoding). |
+| `GET` | `/api/tiles/:id/feed` | — | Fetch + parse an `rss` tile's configured feed (5-min cache). |
 | `PUT` | `/api/tiles/layout` | ✅ | Bulk-save grid positions: `{ layout: [{ i, x, y, w, h }] }`. |
 | `PUT` | `/api/tiles/:id` | ✅ | Update a tile's `config` / `enabled` / position. |
 | `DELETE` | `/api/tiles/:id` | ✅ | Delete a tile. |
@@ -94,6 +106,10 @@ Always present (not part of any toggleable module).
 |--------|------|------|-------------|
 | `GET` | `/api/healthz` | — | Liveness probe. `{ ok, ts }`. Used by Railway. |
 | `GET` | `/api/modules` | — | Manifest of enabled modules: `{ modules: [{ id, name, icon, public }] }`. Drives the frontend. |
+| `GET` | `/api/system` | ✅ | Admin diagnostics: database internals (size, WAL, pages, journal mode, per-table row counts), volume/disk usage, uploads + protected-file totals, and runtime info. Powers the admin **System** page. |
+| `GET` | `/api/files` | ✅ | Lists every file on the volume (media + protected downloads) with size, type, date, and whether it's referenced by a tile. Powers the admin **Files** page. |
+| `GET` | `/api/files/protected/:name` | ✅ | Admin download of a protected file (bypasses the per-tile password gate). |
+| `DELETE` | `/api/files/:store/:name` | ✅ | Delete a file. `store` is `uploads` or `protected`. |
 
 ---
 

@@ -54,6 +54,58 @@ export const TILE_DEFAULTS: Record<
     w: 6,
     h: 6,
   },
+  icons: {
+    label: 'Icon row',
+    icon: 'icons',
+    config: { items: [{ icon: 'github', url: 'https://github.com', label: 'GitHub' }], size: 'md', align: 'center' },
+    w: 4,
+    h: 2,
+  },
+  download: {
+    label: 'Download',
+    icon: 'download',
+    config: { title: 'Download', description: '', icon: 'download', file: '', filename: '', size: 0, protected: false },
+    w: 3,
+    h: 3,
+  },
+  embed: {
+    label: 'Embed / iframe',
+    icon: 'window-maximize',
+    config: { url: '', title: '' },
+    w: 6,
+    h: 5,
+  },
+  command: {
+    label: 'Quick-copy',
+    icon: 'terminal',
+    config: { label: 'Command', command: 'echo hello', icon: 'terminal' },
+    w: 4,
+    h: 2,
+  },
+  clock: {
+    label: 'Clock / countdown',
+    icon: 'clock',
+    config: { mode: 'clock', timezone: '', label: '', showSeconds: true, target: '' },
+    w: 3,
+    h: 2,
+  },
+  weather: {
+    label: 'Weather',
+    icon: 'cloud-sun',
+    config: { place: '', lat: null, lon: null, units: 'c', label: '' },
+    w: 3,
+    h: 3,
+  },
+  rss: {
+    label: 'RSS feed',
+    icon: 'rss',
+    config: { url: '', label: 'Feed', count: 6 },
+    w: 4,
+    h: 5,
+  },
 };
 
-export const PALETTE: TileType[] = ['banner', 'heading', 'link', 'service', 'project', 'text', 'contact'];
+export const PALETTE: TileType[] = [
+  'banner', 'heading', 'link', 'icons', 'service', 'project',
+  'text', 'contact', 'download', 'embed', 'command', 'clock', 'weather', 'rss',
+];

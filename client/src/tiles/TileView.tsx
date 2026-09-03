@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { api, ApiError, trackClick } from '../api';
 import { useAuth } from '../auth/AuthContext';
 import { Icon } from '../components/Icon';
@@ -22,6 +22,20 @@ export function TileView({ tile, status }: { tile: Tile; status?: ServiceStatus 
       return <TextTile tile={tile} />;
     case 'contact':
       return <ContactTile tile={tile} />;
+    case 'icons':
+      return <IconsTile tile={tile} />;
+    case 'download':
+      return <DownloadTile tile={tile} />;
+    case 'embed':
+      return <EmbedTile tile={tile} />;
+    case 'command':
+      return <CommandTile tile={tile} />;
+    case 'clock':
+      return <ClockTile tile={tile} />;
+    case 'weather':
+      return <WeatherTile tile={tile} />;
+    case 'rss':
+      return <RssTile tile={tile} />;
     default:
       return null;
   }
@@ -38,7 +52,11 @@ function BannerTile({ tile }: { tile: Tile }) {
         textAlign: c.align === 'left' ? 'left' : c.align === 'right' ? 'right' : 'center',
       }}
     >
-      {c.image_url && <TileMedia src={c.image_url} parallax={!!c.parallax} audio={!!c.audio} />}
+      {Array.isArray(c.images) && c.images.filter(Boolean).length > 0 ? (
+        <BannerSlides images={c.images.filter(Boolean)} interval={Number(c.interval) || 6} kenburns={c.animate === 'kenburns'} />
+      ) : (
+        c.image_url && <TileMedia src={c.image_url} parallax={!!c.parallax} audio={!!c.audio} />
+      )}
       <div className="tile--banner__scrim" />
       <div className="tile--banner__content">
         <h1 className="tile--banner__title">{c.title || ''}</h1>
@@ -237,6 +255,354 @@ function ContactTile({ tile }: { tile: Tile }) {
             {state === 'sending' ? <Icon name="spinner" spin /> : <Icon name="paper-plane" />} Send
           </button>
         </form>
+      )}
+    </div>
+  );
+}
+
+function BannerSlides({ images, interval, kenburns }: { images: string[]; interval: number; kenburns: boolean }) {
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    if (images.length < 2) return;
+    const t = window.setInterval(() => setI((v) => (v + 1) % images.length), Math.max(2, interval) * 1000);
+    return () => window.clearInterval(t);
+  }, [images.length, interval]);
+  return (
+    <div className="tile-media">
+      {images.map((src, idx) => (
+        <div
+          key={src + idx}
+          className={`banner-slide ${idx === i ? 'banner-slide--on' : ''} ${kenburns ? 'banner-slide--kb' : ''}`}
+          style={{ backgroundImage: `url("${src}")` }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function IconsTile({ tile }: { tile: Tile }) {
+  const c = tile.config;
+  const items: { icon: string; url: string; label?: string }[] = Array.isArray(c.items) ? c.items : [];
+  const justify = c.align === 'left' ? 'flex-start' : c.align === 'right' ? 'flex-end' : 'center';
+  return (
+    <div className="tile tile--icons" style={{ justifyContent: justify }}>
+      {items.map((it, idx) => (
+        <a
+          key={idx}
+          className={`icon-btn icon-btn--${c.size || 'md'}`}
+          href={it.url || '#'}
+          target={it.url?.startsWith('mailto:') ? undefined : '_blank'}
+          rel="noopener noreferrer"
+          title={it.label || ''}
+          aria-label={it.label || it.icon}
+          onClick={() => trackClick(tile.id)}
+        >
+          <Icon name={it.icon || 'link'} />
+        </a>
+      ))}
+    </div>
+  );
+}
+
+function humanSize(bytes: number): string {
+  if (!bytes) return '';
+  const u = ['B', 'KB', 'MB', 'GB'];
+  let n = bytes;
+  let i = 0;
+  while (n >= 1024 && i < u.length - 1) {
+    n /= 1024;
+    i++;
+  }
+  return `${n.toFixed(n < 10 && i > 0 ? 1 : 0)} ${u[i]}`;
+}
+
+function DownloadTile({ tile }: { tile: Tile }) {
+  const c = tile.config;
+  const [pw, setPw] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const protectedFile = !!c.protected;
+
+  async function download() {
+    setBusy(true);
+    setErr('');
+    try {
+      const resp = await fetch(`/api/tiles/${tile.id}/download`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pw }),
+      });
+      if (resp.status === 401) {
+        setErr('Incorrect password');
+        return;
+      }
+      if (!resp.ok) {
+        setErr('Download unavailable');
+        return;
+      }
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = c.filename || 'download';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      setErr('Download failed');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="tile tile--download">
+      <div className="tile--download__head">
+        <span className="link-card__icon" style={{ width: 44, height: 44 }}>
+          <Icon name={c.icon || 'download'} />
+        </span>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div className="tile--download__title">
+            {c.title || 'Download'} {protectedFile && <Icon name="lock" className="tile--download__lock" />}
+          </div>
+          {(c.filename || c.size) && (
+            <div className="admin-row__muted" style={{ fontSize: '0.8rem', wordBreak: 'break-word' }}>
+              {c.filename} {c.size ? `· ${humanSize(Number(c.size))}` : ''}
+            </div>
+          )}
+        </div>
+      </div>
+      {c.description && <p className="tile--download__desc">{c.description}</p>}
+      {protectedFile && (
+        <input
+          className="input"
+          type="password"
+          placeholder="Password"
+          value={pw}
+          onChange={(e) => setPw(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && download()}
+        />
+      )}
+      {err && <p style={{ color: 'var(--down)', margin: 0, fontSize: '0.82rem' }}>{err}</p>}
+      <button className="btn btn--primary" style={{ marginTop: 'auto' }} onClick={download} disabled={busy || !c.file}>
+        {busy ? <Icon name="spinner" spin /> : <Icon name="download" />} {c.file ? 'Download' : 'No file'}
+      </button>
+    </div>
+  );
+}
+
+/** Only allow embeds from known-safe hosts; transform common watch URLs. */
+function embedSrc(raw: string): string | null {
+  if (!raw) return null;
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return null;
+  }
+  const host = url.hostname.replace(/^www\./, '');
+  const yt = host === 'youtube.com' || host === 'youtu.be' || host === 'youtube-nocookie.com';
+  if (yt) {
+    const id = host === 'youtu.be' ? url.pathname.slice(1) : url.searchParams.get('v') || url.pathname.split('/').pop();
+    return id ? `https://www.youtube-nocookie.com/embed/${id}` : null;
+  }
+  const allowed = [
+    'player.vimeo.com', 'vimeo.com', 'openstreetmap.org', 'google.com', 'maps.google.com',
+    'codepen.io', 'codesandbox.io', 'open.spotify.com', 'bandcamp.com', 'soundcloud.com',
+  ];
+  if (allowed.some((a) => host === a || host.endsWith(`.${a}`))) return url.toString();
+  return null;
+}
+
+function EmbedTile({ tile }: { tile: Tile }) {
+  const c = tile.config;
+  const src = embedSrc(c.url || '');
+  return (
+    <div className="tile tile--embed">
+      {src ? (
+        <iframe
+          className="tile--embed__frame"
+          src={src}
+          title={c.title || 'embed'}
+          loading="lazy"
+          allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+          referrerPolicy="no-referrer"
+        />
+      ) : (
+        <div className="empty" style={{ margin: 0 }}>
+          {c.url ? 'This host isn’t allowed for embeds.' : 'No embed URL set.'}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CommandTile({ tile }: { tile: Tile }) {
+  const { notify } = useAuth();
+  const c = tile.config;
+  const copy = () => {
+    navigator.clipboard.writeText(c.command || '').then(
+      () => notify('Copied'),
+      () => notify('Copy failed', true),
+    );
+  };
+  return (
+    <div className="tile tile--command">
+      {c.label && (
+        <div className="tile--command__label">
+          <Icon name={c.icon || 'terminal'} /> {c.label}
+        </div>
+      )}
+      <div className="tile--command__row">
+        <code className="tile--command__code">{c.command || ''}</code>
+        <button className="btn btn--ghost btn--icon" onClick={copy} title="Copy">
+          <Icon name="copy" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ClockTile({ tile }: { tile: Tile }) {
+  const c = tile.config;
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const t = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(t);
+  }, []);
+
+  if (c.mode === 'countdown' && c.target) {
+    const diff = new Date(c.target).getTime() - now;
+    const done = diff <= 0;
+    const s = Math.max(0, Math.floor(diff / 1000));
+    const d = Math.floor(s / 86400);
+    const h = Math.floor((s % 86400) / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    return (
+      <div className="tile tile--clock">
+        {c.label && <div className="tile--clock__label">{c.label}</div>}
+        <div className="tile--clock__time">
+          {done ? "It's time" : `${d}d ${h}h ${m}m ${sec}s`}
+        </div>
+      </div>
+    );
+  }
+
+  const opts: Intl.DateTimeFormatOptions = {
+    hour: '2-digit',
+    minute: '2-digit',
+    ...(c.showSeconds !== false ? { second: '2-digit' } : {}),
+    ...(c.timezone ? { timeZone: c.timezone } : {}),
+  };
+  let time = '';
+  try {
+    time = new Date(now).toLocaleTimeString([], opts);
+  } catch {
+    time = new Date(now).toLocaleTimeString();
+  }
+  return (
+    <div className="tile tile--clock">
+      {c.label && <div className="tile--clock__label">{c.label}</div>}
+      <div className="tile--clock__time">{time}</div>
+      {c.timezone && <div className="tile--clock__zone">{c.timezone}</div>}
+    </div>
+  );
+}
+
+const WEATHER_CODES: Record<number, { label: string; icon: string }> = {
+  0: { label: 'Clear', icon: 'sun' },
+  1: { label: 'Mainly clear', icon: 'cloud-sun' },
+  2: { label: 'Partly cloudy', icon: 'cloud-sun' },
+  3: { label: 'Overcast', icon: 'cloud' },
+  45: { label: 'Fog', icon: 'smog' },
+  48: { label: 'Fog', icon: 'smog' },
+  51: { label: 'Drizzle', icon: 'cloud-rain' },
+  61: { label: 'Rain', icon: 'cloud-showers-heavy' },
+  63: { label: 'Rain', icon: 'cloud-showers-heavy' },
+  71: { label: 'Snow', icon: 'snowflake' },
+  80: { label: 'Showers', icon: 'cloud-showers-heavy' },
+  95: { label: 'Thunderstorm', icon: 'cloud-bolt' },
+};
+
+function WeatherTile({ tile }: { tile: Tile }) {
+  const c = tile.config;
+  const [data, setData] = useState<{ temperature_2m: number; weather_code: number; wind_speed_10m: number } | null>(null);
+  const [failed, setFailed] = useState(false);
+  const f = c.units === 'f';
+
+  useEffect(() => {
+    if (c.lat == null || c.lon == null) return;
+    api
+      .get<{ weather: { temperature_2m: number; weather_code: number; wind_speed_10m: number } | null }>(
+        `/tiles/weather?lat=${c.lat}&lon=${c.lon}`,
+      )
+      .then((r) => setData(r.weather))
+      .catch(() => setFailed(true));
+  }, [c.lat, c.lon]);
+
+  const code = data ? WEATHER_CODES[data.weather_code] || { label: '', icon: 'cloud' } : null;
+  const temp = data ? (f ? data.temperature_2m * 1.8 + 32 : data.temperature_2m) : null;
+
+  return (
+    <div className="tile tile--weather">
+      <div className="tile--weather__place">
+        <Icon name={code?.icon || 'cloud-sun'} /> {c.label || c.place || 'Weather'}
+      </div>
+      {c.lat == null ? (
+        <div className="admin-row__muted">Set a location in the editor.</div>
+      ) : failed ? (
+        <div className="admin-row__muted">Unavailable</div>
+      ) : temp == null ? (
+        <div className="admin-row__muted">…</div>
+      ) : (
+        <>
+          <div className="tile--weather__temp">{Math.round(temp)}°{f ? 'F' : 'C'}</div>
+          <div className="admin-row__muted">
+            {code?.label}
+            {data ? ` · ${Math.round(data.wind_speed_10m)} km/h wind` : ''}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function RssTile({ tile }: { tile: Tile }) {
+  const c = tile.config;
+  const [items, setItems] = useState<{ title: string; link: string; date: string | null }[] | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    api
+      .get<{ items: { title: string; link: string; date: string | null }[] }>(`/tiles/${tile.id}/feed`)
+      .then((r) => setItems(r.items))
+      .catch(() => setFailed(true));
+  }, [tile.id]);
+
+  return (
+    <div className="tile tile--rss">
+      <div className="tile--rss__head">
+        <Icon name="rss" /> {c.label || 'Feed'}
+      </div>
+      {failed ? (
+        <div className="admin-row__muted">Couldn't load feed.</div>
+      ) : !items ? (
+        <div className="admin-row__muted">…</div>
+      ) : items.length === 0 ? (
+        <div className="admin-row__muted">No items.</div>
+      ) : (
+        <ul className="tile--rss__list">
+          {items.map((it, idx) => (
+            <li key={idx}>
+              <a href={it.link} target="_blank" rel="noopener noreferrer">
+                {it.title || '(untitled)'}
+              </a>
+              {it.date && <span className="tile--rss__date">{new Date(it.date).toLocaleDateString()}</span>}
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );

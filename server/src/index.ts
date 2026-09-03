@@ -11,6 +11,8 @@ import { createLogger } from './logger';
 import { getDb, migrateCore, seedAdmin } from './db';
 import { createRequireAuth, createAuthRouter } from './auth/auth';
 import { registerModules } from './modules/registry';
+import { collectSystemInfo } from './system';
+import { createFilesRouter } from './files';
 import type { ModuleContext } from './types';
 
 const log = createLogger('server');
@@ -52,6 +54,19 @@ function main(): void {
 
   // Auth is core (not a toggleable module).
   app.use('/api/auth', createAuthRouter(db, requireAuth));
+
+  // Admin-only file manager for the volume.
+  app.use('/api/files', createFilesRouter(db, config, requireAuth));
+
+  // Admin-only system diagnostics: database internals + volume/disk usage.
+  app.get('/api/system', requireAuth, (_req, res) => {
+    try {
+      res.json(collectSystemInfo(db, config));
+    } catch (err) {
+      log.error('System info failed', err);
+      res.status(500).json({ error: 'Could not collect system info' });
+    }
+  });
 
   // Mount enabled feature modules.
   const { apiRouter, enabled } = registerModules(ctx);

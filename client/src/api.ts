@@ -79,6 +79,19 @@ export async function uploadImage(file: File): Promise<string> {
   return (data as { url: string }).url;
 }
 
+/** Uploads any file for a download tile; returns an opaque handle + metadata. */
+export async function uploadFile(file: File): Promise<{ file: string; filename: string; size: number }> {
+  const fd = new FormData();
+  fd.append('file', file);
+  const headers = new Headers();
+  const token = getToken();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  const resp = await fetch('/api/tiles/upload-file', { method: 'POST', body: fd, headers, credentials: 'include' });
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok) throw new ApiError(resp.status, (data as { error?: string }).error || 'Upload failed');
+  return data as { file: string; filename: string; size: number };
+}
+
 /** Fire-and-forget click tracking (never throws into the UI). */
 export function trackClick(linkId: number): void {
   try {

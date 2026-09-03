@@ -5,7 +5,21 @@ export interface ModuleManifestEntry {
   public: boolean;
 }
 
-export type TileType = 'link' | 'banner' | 'service' | 'project' | 'text' | 'heading' | 'contact';
+export type TileType =
+  | 'link'
+  | 'banner'
+  | 'service'
+  | 'project'
+  | 'text'
+  | 'heading'
+  | 'contact'
+  | 'icons'
+  | 'download'
+  | 'embed'
+  | 'command'
+  | 'clock'
+  | 'weather'
+  | 'rss';
 
 export interface Tile {
   id: number;
