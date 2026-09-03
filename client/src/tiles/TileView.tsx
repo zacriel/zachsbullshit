@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { api, ApiError, trackClick } from '../api';
 import { useAuth } from '../auth/AuthContext';
 import { Icon } from '../components/Icon';
+import { TileMedia } from './media';
 import type { ServiceStatus, Tile } from '../types';
 
 /** Renders a single tile in view (non-editing) mode by its type. */
@@ -35,10 +36,9 @@ function BannerTile({ tile }: { tile: Tile }) {
       style={{
         alignItems: align,
         textAlign: c.align === 'left' ? 'left' : c.align === 'right' ? 'right' : 'center',
-        backgroundImage: c.image_url ? `url("${c.image_url}")` : undefined,
-        backgroundAttachment: c.parallax ? 'fixed' : 'scroll',
       }}
     >
+      {c.image_url && <TileMedia src={c.image_url} parallax={!!c.parallax} audio={!!c.audio} />}
       <div className="tile--banner__scrim" />
       <div className="tile--banner__content">
         <h1 className="tile--banner__title">{c.title || ''}</h1>

@@ -57,10 +57,11 @@ The primary content system: a grid of tiles, each with a `type`, a JSON
 `config`, a grid position (`x, y, w, h`), and `enabled`. Tile types:
 `link`, `banner`, `service`, `project`, `text`, `heading`, `contact`.
 
-Any non-banner tile may set `config.bg_image` (a URL, or an uploaded image's
-returned URL) for a per-tile background; banners use `config.image_url` and a
-`config.parallax` boolean (fixed vs. static). `contact` tiles post to the
-contact module, so `MODULE_CONTACT` must be enabled (it is by default).
+Any non-banner tile may set `config.bg_image` (a URL, or an uploaded image/video
+URL) for a per-tile background — images and MP4/WebM video both work, with
+`config.bg_audio` to unmute a video. Banners use `config.image_url` plus
+`config.parallax` (JS scroll drift) and `config.audio` (unmute video). `contact`
+tiles post to the contact module, so `MODULE_CONTACT` must be enabled (default on).
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
@@ -68,7 +69,7 @@ contact module, so `MODULE_CONTACT` must be enabled (it is by default).
 | `GET` | `/api/tiles/status` | — | Latest status snapshot for service tiles: `{ statuses: { [tileId]: { status, code, latency_ms, players_online, players_max, motd, version, checked_at } } }`. |
 | `GET` | `/api/tiles/all` | ✅ | All tiles incl. disabled. |
 | `POST` | `/api/tiles` | ✅ | Create a tile `{ type, config, x, y, w, h, enabled }`. |
-| `POST` | `/api/tiles/upload` | ✅ | Upload an image (multipart `file`, ≤5 MB). Returns `{ url }` served from `/uploads/…` (stored on the volume). |
+| `POST` | `/api/tiles/upload` | ✅ | Upload an image or MP4/WebM video (multipart `file`, ≤64 MB). Returns `{ url }` served from `/uploads/…` (stored on the volume). |
 | `PUT` | `/api/tiles/layout` | ✅ | Bulk-save grid positions: `{ layout: [{ i, x, y, w, h }] }`. |
 | `PUT` | `/api/tiles/:id` | ✅ | Update a tile's `config` / `enabled` / position. |
 | `DELETE` | `/api/tiles/:id` | ✅ | Delete a tile. |

@@ -3,6 +3,7 @@ import { uploadImage } from '../api';
 import { useAuth } from '../auth/AuthContext';
 import { Icon } from '../components/Icon';
 import { IconPicker } from '../components/IconPicker';
+import { isVideo } from './media';
 import type { Tile } from '../types';
 
 /** Modal editor for a tile's type-specific configuration. */
@@ -38,7 +39,7 @@ export function TileEditor({
             <>
               <Field label="Title"><input className="input" value={config.title || ''} onChange={(e) => set('title', e.target.value)} /></Field>
               <Field label="Subtitle"><input className="input" value={config.subtitle || ''} onChange={(e) => set('subtitle', e.target.value)} /></Field>
-              <ImageField label="Background image" value={config.image_url || ''} onChange={(v) => set('image_url', v)} notify={notify} />
+              <ImageField label="Background image or video" value={config.image_url || ''} onChange={(v) => set('image_url', v)} notify={notify} />
               <Field label="Text alignment">
                 <select className="input" value={config.align || 'center'} onChange={(e) => set('align', e.target.value)}>
                   <option value="left">Left</option>
@@ -48,8 +49,14 @@ export function TileEditor({
               </Field>
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.9rem', color: 'var(--text-muted)' }}>
                 <input type="checkbox" checked={!!config.parallax} onChange={(e) => set('parallax', e.target.checked)} />
-                Parallax background (fixed while scrolling)
+                Parallax (background drifts as you scroll)
               </label>
+              {isVideo(config.image_url) && (
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                  <input type="checkbox" checked={!!config.audio} onChange={(e) => set('audio', e.target.checked)} />
+                  Play video audio
+                </label>
+              )}
             </>
           )}
 
@@ -128,9 +135,17 @@ export function TileEditor({
             </>
           )}
 
-          {/* Every non-banner tile can carry its own background image. */}
+          {/* Every non-banner tile can carry its own background image or video. */}
           {tile.type !== 'banner' && (
-            <ImageField label="Tile background (optional)" value={config.bg_image || ''} onChange={(v) => set('bg_image', v)} notify={notify} />
+            <>
+              <ImageField label="Tile background — image or video (optional)" value={config.bg_image || ''} onChange={(v) => set('bg_image', v)} notify={notify} />
+              {isVideo(config.bg_image) && (
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                  <input type="checkbox" checked={!!config.bg_audio} onChange={(e) => set('bg_audio', e.target.checked)} />
+                  Play video audio
+                </label>
+              )}
+            </>
           )}
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 4 }}>
@@ -226,8 +241,13 @@ function ImageField({
           {busy ? <Icon name="spinner" spin /> : <Icon name="upload" />}
         </button>
       </div>
-      {value && <img src={value} alt="" style={{ marginTop: 8, maxHeight: 80, borderRadius: 8, border: '1px solid var(--border)' }} />}
-      <input ref={inputRef} type="file" accept="image/*" hidden onChange={onFile} />
+      {value &&
+        (isVideo(value) ? (
+          <video src={value} muted loop autoPlay playsInline style={{ marginTop: 8, maxHeight: 90, borderRadius: 8, border: '1px solid var(--border)' }} />
+        ) : (
+          <img src={value} alt="" style={{ marginTop: 8, maxHeight: 80, borderRadius: 8, border: '1px solid var(--border)' }} />
+        ))}
+      <input ref={inputRef} type="file" accept="image/*,video/mp4,video/webm" hidden onChange={onFile} />
     </div>
   );
 }

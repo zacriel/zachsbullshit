@@ -149,15 +149,17 @@ function register(ctx: ModuleContext): Router {
       cb(null, `${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`);
     },
   });
+  const ACCEPTED = (m: string) =>
+    m.startsWith('image/') || m === 'video/mp4' || m === 'video/webm';
   const upload = multer({
     storage,
-    limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
-    fileFilter: (_req, file, cb) => cb(null, file.mimetype.startsWith('image/')),
+    limits: { fileSize: 64 * 1024 * 1024 }, // 64 MB (video-friendly)
+    fileFilter: (_req, file, cb) => cb(null, ACCEPTED(file.mimetype)),
   });
 
   router.post('/upload', requireAuth, upload.single('file'), (req, res) => {
     if (!req.file) {
-      res.status(400).json({ error: 'No image uploaded (must be an image under 5 MB)' });
+      res.status(400).json({ error: 'No file uploaded (images or MP4/WebM video, under 64 MB)' });
       return;
     }
     res.status(201).json({ url: `/uploads/${req.file.filename}` });

@@ -5,6 +5,7 @@ import { useAuth } from '../auth/AuthContext';
 import { Icon } from './Icon';
 import { TileView } from '../tiles/TileView';
 import { TileEditor } from '../tiles/TileEditor';
+import { TileMedia, isVideo } from '../tiles/media';
 import { PALETTE, TILE_DEFAULTS } from '../tiles/defaults';
 import type { ServiceStatus, Tile, TileType } from '../types';
 
@@ -196,12 +197,14 @@ export function GridCanvas() {
             .sort((a, b) => a.y - b.y || a.x - b.x)
             .map((tile) => {
               const bg = tile.type !== 'banner' ? (tile.config.bg_image as string | undefined) : undefined;
+              const vid = isVideo(bg);
               return (
                 <div
                   key={String(tile.id)}
                   className={`stack-item ${!tile.enabled ? 'grid-item--hidden' : ''} ${bg ? 'grid-item--bg' : ''}`}
-                  style={bg ? ({ ['--tile-bg']: `url("${bg}")` } as CSSProperties) : undefined}
+                  style={bg && !vid ? ({ ['--tile-bg']: `url("${bg}")` } as CSSProperties) : undefined}
                 >
+                  {bg && vid && <TileMedia src={bg!} audio={!!tile.config.bg_audio} />}
                   <TileView tile={tile} status={statuses[tile.id]} />
                   {canEdit && (
                     <>
@@ -235,14 +238,16 @@ export function GridCanvas() {
         >
           {tiles.map((tile) => {
             // Banners paint their own background; every other tile type can carry
-            // an optional per-tile background image (uploaded or via URL).
+            // an optional per-tile background image or video (uploaded or via URL).
             const bg = tile.type !== 'banner' ? (tile.config.bg_image as string | undefined) : undefined;
+            const vid = isVideo(bg);
             return (
               <div
                 key={String(tile.id)}
                 className={`grid-item ${!tile.enabled ? 'grid-item--hidden' : ''} ${bg ? 'grid-item--bg' : ''}`}
-                style={bg ? ({ ['--tile-bg']: `url("${bg}")` } as CSSProperties) : undefined}
+                style={bg && !vid ? ({ ['--tile-bg']: `url("${bg}")` } as CSSProperties) : undefined}
               >
+                {bg && vid && <TileMedia src={bg!} audio={!!tile.config.bg_audio} />}
                 <TileView tile={tile} status={statuses[tile.id]} />
                 {canEdit && (
                   <>
