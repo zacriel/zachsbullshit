@@ -187,9 +187,12 @@ export function TileEditor({
                   notify={notify}
                   onUpload={(r) => setConfig((cc) => ({ ...cc, file: r.file, filename: r.filename, size: r.size }))}
                 />
-                <div className="field span-2">
-                  <label>Password {config.protected ? '(protected — type to change, or remove)' : '(optional)'}</label>
-                  <input className="input" type="password" placeholder={config.protected ? 'Leave blank to keep current' : 'No password'} value={config.password ?? ''} onChange={(e) => set('password', e.target.value)} />
+                <Field wide label="…or external URL (for large files hosted elsewhere — GitHub Releases, R2, S3)">
+                  <input className="input" value={config.external_url || ''} onChange={(e) => set('external_url', e.target.value)} placeholder="https://…/file.zip  (overrides the uploaded file; no password gate)" />
+                </Field>
+                <div className="field span-2" style={{ opacity: config.external_url ? 0.5 : 1 }}>
+                  <label>Password {config.external_url ? '(not available for external links)' : config.protected ? '(protected — type to change, or remove)' : '(optional)'}</label>
+                  <input className="input" type="password" disabled={!!config.external_url} placeholder={config.protected ? 'Leave blank to keep current' : 'No password'} value={config.password ?? ''} onChange={(e) => set('password', e.target.value)} />
                   {config.protected && (
                     <button type="button" className="btn btn--ghost btn--sm" style={{ marginTop: 8, alignSelf: 'flex-start' }} onClick={() => set('password', '')}>
                       <Icon name="lock-open" /> Remove password
@@ -338,8 +341,8 @@ function ImageField({
       const url = await uploadImage(file);
       onChange(url);
       notify('Uploaded');
-    } catch {
-      notify('Upload failed', true);
+    } catch (e) {
+      notify(e instanceof Error ? e.message : 'Upload failed', true);
     } finally {
       setBusy(false);
       if (inputRef.current) inputRef.current.value = '';
@@ -391,8 +394,8 @@ function ImageListField({
       const url = await uploadImage(file);
       onChange([...value, url]);
       notify('Uploaded');
-    } catch {
-      notify('Upload failed', true);
+    } catch (e) {
+      notify(e instanceof Error ? e.message : 'Upload failed', true);
     } finally {
       setBusy(false);
       if (inputRef.current) inputRef.current.value = '';
@@ -444,8 +447,8 @@ function FileField({
       const r = await uploadFile(file);
       onUpload(r);
       notify('File uploaded');
-    } catch {
-      notify('Upload failed', true);
+    } catch (e) {
+      notify(e instanceof Error ? e.message : 'Upload failed', true);
     } finally {
       setBusy(false);
       if (inputRef.current) inputRef.current.value = '';

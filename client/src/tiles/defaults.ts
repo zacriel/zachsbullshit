@@ -64,7 +64,7 @@ export const TILE_DEFAULTS: Record<
   download: {
     label: 'Download',
     icon: 'download',
-    config: { title: 'Download', description: '', icon: 'download', file: '', filename: '', size: 0, protected: false },
+    config: { title: 'Download', description: '', icon: 'download', file: '', filename: '', size: 0, protected: false, external_url: '' },
     w: 3,
     h: 3,
   },

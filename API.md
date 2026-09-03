@@ -57,7 +57,9 @@ The primary content system: a grid of tiles, each with a `type`, a JSON
 `config`, a grid position (`x, y, w, h`), and `enabled`. Tile types:
 `link`, `banner` (single image/video **or** a cross-fade/Ken-Burns slideshow),
 `service`, `project`, `text`, `heading`, `contact`, `icons` (icon-only link row),
-`download` (file download, optional server-side password), `embed` (allow-listed
+`download` (uploaded file with optional server-side password, **or** an
+`external_url` linking to a file hosted elsewhere — no size cap, no password),
+`embed` (allow-listed
 iframe: YouTube/Vimeo/Maps/CodePen/Spotify…), `command` (copy-to-clipboard
 snippet), `clock` (live clock or countdown), `weather` (Open-Meteo), `rss`
 (RSS/Atom feed). A download tile's `password` is write-only — hashed with bcrypt

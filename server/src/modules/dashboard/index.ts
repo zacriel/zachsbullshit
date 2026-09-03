@@ -199,12 +199,19 @@ function register(ctx: ModuleContext): Router {
     fileFilter: (_req, file, cb) => cb(null, ACCEPTED(file.mimetype)),
   });
 
-  router.post('/upload', requireAuth, upload.single('file'), (req, res) => {
-    if (!req.file) {
-      res.status(400).json({ error: 'No file uploaded (images or MP4/WebM video, under 64 MB)' });
-      return;
-    }
-    res.status(201).json({ url: `/uploads/${req.file.filename}` });
+  router.post('/upload', requireAuth, (req, res) => {
+    upload.single('file')(req, res, (err: unknown) => {
+      if (err) {
+        const tooBig = (err as { code?: string }).code === 'LIMIT_FILE_SIZE';
+        res.status(tooBig ? 413 : 400).json({ error: tooBig ? 'File too large (max 64 MB)' : 'Upload error' });
+        return;
+      }
+      if (!req.file) {
+        res.status(400).json({ error: 'No file uploaded (images or MP4/WebM video, under 64 MB)' });
+        return;
+      }
+      res.status(201).json({ url: `/uploads/${req.file.filename}` });
+    });
   });
 
   // Downloadable files live OUTSIDE the statically-served uploads dir so they
@@ -220,15 +227,27 @@ function register(ctx: ModuleContext): Router {
       cb(null, `${Date.now()}-${Math.random().toString(36).slice(2, 8)}${ext}`);
     },
   });
-  const uploadFile = multer({ storage: fileStorage, limits: { fileSize: 200 * 1024 * 1024 } }); // 200 MB
+  const maxMb = ctx.config.uploadMaxMb;
+  const uploadFile = multer({ storage: fileStorage, limits: { fileSize: maxMb * 1024 * 1024 } });
 
   // Admin: upload a downloadable file. Returns an opaque handle + display name.
-  router.post('/upload-file', requireAuth, uploadFile.single('file'), (req, res) => {
-    if (!req.file) {
-      res.status(400).json({ error: 'No file uploaded (under 200 MB)' });
-      return;
-    }
-    res.status(201).json({ file: req.file.filename, filename: req.file.originalname, size: req.file.size });
+  // The multer middleware is invoked manually so its errors become clean JSON
+  // (a 413) instead of a reset connection.
+  router.post('/upload-file', requireAuth, (req, res) => {
+    uploadFile.single('file')(req, res, (err: unknown) => {
+      if (err) {
+        const tooBig = (err as { code?: string }).code === 'LIMIT_FILE_SIZE';
+        res.status(tooBig ? 413 : 400).json({
+          error: tooBig ? `File too large (max ${maxMb} MB on the server; a proxy may cap it lower)` : 'Upload error',
+        });
+        return;
+      }
+      if (!req.file) {
+        res.status(400).json({ error: 'No file uploaded' });
+        return;
+      }
+      res.status(201).json({ file: req.file.filename, filename: req.file.originalname, size: req.file.size });
+    });
   });
 
   // Public: download a file tile, verifying the password when protected.

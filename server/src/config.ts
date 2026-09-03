@@ -33,6 +33,7 @@ export interface Config {
   modules: Record<string, boolean>;
   healthIntervalMs: number;
   uploadsPath: string;
+  uploadMaxMb: number;
 }
 
 const databasePath = process.env.DATABASE_PATH
@@ -75,6 +76,9 @@ export const config: Config = {
   },
   healthIntervalMs: int(process.env.HEALTH_INTERVAL_MS, 60000),
   uploadsPath,
+  // Max download-file upload size (MB). Note: a proxy in front (Cloudflare
+  // Free caps at 100 MB) can reject large uploads before they reach here.
+  uploadMaxMb: int(process.env.UPLOAD_MAX_MB, 100),
 };
 
 /** Fail fast on insecure production config. */

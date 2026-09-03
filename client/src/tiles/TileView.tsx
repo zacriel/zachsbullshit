@@ -317,11 +317,15 @@ function humanSize(bytes: number): string {
 }
 
 function DownloadTile({ tile }: { tile: Tile }) {
+  const { notify } = useAuth();
   const c = tile.config;
   const [pw, setPw] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
-  const protectedFile = !!c.protected;
+  // An external URL points at a file hosted elsewhere (no size cap, but no
+  // password gate). It takes precedence over an uploaded file.
+  const external = typeof c.external_url === 'string' && c.external_url ? c.external_url : '';
+  const protectedFile = !external && !!c.protected;
 
   async function download() {
     setBusy(true);
@@ -385,9 +389,36 @@ function DownloadTile({ tile }: { tile: Tile }) {
         />
       )}
       {err && <p style={{ color: 'var(--down)', margin: 0, fontSize: '0.82rem' }}>{err}</p>}
-      <button className="btn btn--primary" style={{ marginTop: 'auto' }} onClick={download} disabled={busy || !c.file}>
-        {busy ? <Icon name="spinner" spin /> : <Icon name="download" />} {c.file ? 'Download' : 'No file'}
-      </button>
+      {external ? (
+        <div style={{ display: 'flex', gap: 8, marginTop: 'auto' }}>
+          <a
+            className="btn btn--primary"
+            style={{ flex: 1 }}
+            href={external}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => trackClick(tile.id)}
+          >
+            <Icon name="download" /> Download
+          </a>
+          <button
+            className="btn btn--ghost btn--icon"
+            title="Copy link"
+            onClick={() =>
+              navigator.clipboard.writeText(external).then(
+                () => notify('Link copied'),
+                () => notify('Copy failed', true),
+              )
+            }
+          >
+            <Icon name="link" />
+          </button>
+        </div>
+      ) : (
+        <button className="btn btn--primary" style={{ marginTop: 'auto' }} onClick={download} disabled={busy || !c.file}>
+          {busy ? <Icon name="spinner" spin /> : <Icon name="download" />} {c.file ? 'Download' : 'No file'}
+        </button>
+      )}
     </div>
   );
 }
