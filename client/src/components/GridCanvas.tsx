@@ -215,7 +215,7 @@ export function GridCanvas() {
               return (
                 <div
                   key={String(tile.id)}
-                  className={`stack-item ${!tile.enabled ? 'grid-item--hidden' : ''} ${bg ? 'grid-item--bg' : ''}`}
+                  className={`stack-item ${!tile.enabled ? 'grid-item--hidden' : ''} ${bg ? 'grid-item--bg' : ''} ${tile.config.floating ? 'is-floating' : ''}`}
                   style={bg && !vid ? ({ ['--tile-bg']: `url("${bg}")` } as CSSProperties) : undefined}
                 >
                   {bg && vid && <TileMedia src={bg!} audio={!!tile.config.bg_audio} />}
@@ -258,7 +258,7 @@ export function GridCanvas() {
             return (
               <div
                 key={String(tile.id)}
-                className={`grid-item ${!tile.enabled ? 'grid-item--hidden' : ''} ${bg ? 'grid-item--bg' : ''}`}
+                className={`grid-item ${!tile.enabled ? 'grid-item--hidden' : ''} ${bg ? 'grid-item--bg' : ''} ${tile.config.floating ? 'is-floating' : ''}`}
                 style={bg && !vid ? ({ ['--tile-bg']: `url("${bg}")` } as CSSProperties) : undefined}
               >
                 {bg && vid && <TileMedia src={bg!} audio={!!tile.config.bg_audio} />}

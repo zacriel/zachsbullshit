@@ -272,6 +272,8 @@ export function TileEditor({
               </>
             )}
 
+            <Toggle label="Floating (no background, border, or shadow)" checked={!!config.floating} onChange={(v) => set('floating', v)} />
+
             <Field label="Width (1–12 cols)">
               <input type="number" className="input" min={1} max={12} value={w} onChange={(e) => setW(Math.max(1, Math.min(12, Number(e.target.value) || 1)))} />
             </Field>

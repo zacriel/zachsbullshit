@@ -1441,6 +1441,23 @@ video.tile-media__el {
 }
 .grid-item--bg > .tile--heading { background: transparent; }
 
+/* ---------- Floating tile: strip the card chrome, keep the contents ---------- */
+.is-floating > .tile,
+.is-floating > .tile:hover {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  transform: none !important;
+}
+/* neutralize inner card hover lifts too */
+.is-floating .tile--link:hover,
+.is-floating .tile--project:hover,
+.is-floating .link-card:hover { box-shadow: none; transform: none; border-color: transparent; }
+/* a floating tile with a bg image would contradict itself — drop the layers */
+.is-floating.grid-item--bg::before,
+.is-floating.grid-item--bg::after { display: none; }
+
 /* ---------- Contact tile ---------- */
 .tile--contact {
   display: flex;
