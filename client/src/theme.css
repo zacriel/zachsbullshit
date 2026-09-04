@@ -172,9 +172,13 @@ h1, h2, h3 {
   left: 0;
   right: 0;
   z-index: 50;
-  padding: 14px 0;
-  transition: transform 0.4s var(--ease), padding 0.3s var(--ease);
+  /* Fixed height that shrinks when floating — this IS the purple strip the
+     content sits below (main padding-top matches it), so vertically centering
+     the bar here centers the logo in the strip. */
+  height: 108px;
+  transition: height 0.35s var(--ease), transform 0.4s var(--ease);
 }
+.header--floating { height: 70px; }
 .header--hidden {
   transform: translateY(-140%);
 }
@@ -184,7 +188,8 @@ h1, h2, h3 {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 10px 12px 10px 20px;
+  height: 100%;
+  padding: 0 12px 0 20px;
   border-radius: 999px;
   border: 1px solid transparent;
   transition: all 0.35s var(--ease);
@@ -239,7 +244,7 @@ h1, h2, h3 {
    Larger at the top of the page; shrinks cleanly when the header condenses
    into its floating pill. */
 .brand__logo {
-  height: 72px;
+  height: 76px;
   width: auto;
   object-fit: contain;
   object-position: center;
@@ -248,7 +253,7 @@ h1, h2, h3 {
   filter: brightness(0) invert(1);
   transition: height 0.35s var(--ease);
 }
-.header--floating .brand__logo { height: 56px; }
+.header--floating .brand__logo { height: 44px; }
 .nav {
   display: flex;
   gap: 2px;
@@ -1034,7 +1039,9 @@ h1, h2, h3 {
 /* ============================================================
    GRID DASHBOARD (tiles)
    ============================================================ */
-.main--grid { padding-top: 74px; }
+/* matches the static header height so content starts exactly at its base,
+   making the visible top strip and the header one and the same */
+.main--grid { padding-top: 108px; }
 .grid-wrap { position: relative; min-height: 60vh; }
 
 /* react-grid-layout placeholder + item basics */
@@ -1388,13 +1395,14 @@ h1, h2, h3 {
 
 @media (max-width: 767px) {
   .container { padding: 0 16px; }
-  .main--grid { padding-top: 64px; }
+  /* Header height + this padding stay in lockstep so the logo centers in the strip. */
+  .header { height: 76px; }
+  .header--floating { height: 60px; }
+  .main--grid { padding-top: 76px; }
   .tile--banner { padding: 26px 22px; min-height: 220px; }
   .tile--banner__title { font-size: clamp(2rem, 9vw, 3rem); }
-  /* Header pill hugs the screen a little tighter. */
-  .header { padding: 10px 0; }
   .brand__logo { height: 52px; }
-  .header--floating .brand__logo { height: 48px; }
+  .header--floating .brand__logo { height: 40px; }
   /* Command snippets: wrap instead of forcing a horizontal scroll. */
   .tile--command__code { white-space: pre-wrap; word-break: break-word; }
   .tile--clock__time { font-size: clamp(1.3rem, 6vw, 2rem); }
