@@ -176,9 +176,10 @@ h1, h2, h3 {
      content sits below (main padding-top matches it), so vertically centering
      the bar here centers the logo in the strip. */
   height: 108px;
-  transition: height 0.35s var(--ease), transform 0.4s var(--ease);
+  transition: height 0.35s var(--ease), padding-top 0.35s var(--ease), transform 0.4s var(--ease);
 }
-.header--floating { height: 70px; }
+/* Floating: same-size pill, but inset from the very top of the viewport. */
+.header--floating { height: 84px; padding-top: 14px; }
 .header--hidden {
   transform: translateY(-140%);
 }
@@ -277,6 +278,57 @@ h1, h2, h3 {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+.header__right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+/* Header social icons — an invisible row; the icons carry the spacing. */
+.header__socials {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.header__socials--edit {
+  display: grid;
+  grid-template-columns: repeat(6, 42px);
+  gap: 6px;
+}
+.header__social {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border-radius: 11px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1.15rem;
+  cursor: pointer;
+  transition: all 0.16s var(--ease);
+}
+.header__social:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.07);
+  transform: translateY(-1px);
+}
+.header__social--empty {
+  color: var(--text-faint);
+  border: 1.5px dashed var(--border-strong);
+  font-size: 0.9rem;
+}
+.header__social--empty:hover {
+  color: var(--accent-bright);
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+  transform: none;
+}
+@media (max-width: 640px) {
+  .header__right { gap: 10px; }
+  .header__socials--edit { grid-template-columns: repeat(6, 34px); gap: 4px; }
+  .header__social { width: 34px; height: 34px; font-size: 1rem; }
 }
 
 /* ============================================================
@@ -1399,7 +1451,7 @@ h1, h2, h3 {
   .container { padding: 0 16px; }
   /* Header height + this padding stay in lockstep so the logo centers in the strip. */
   .header { height: 76px; }
-  .header--floating { height: 60px; }
+  .header--floating { height: 72px; padding-top: 12px; }
   .main--grid { padding-top: 76px; }
   .tile--banner { padding: 26px 22px; min-height: 220px; }
   .tile--banner__title { font-size: clamp(2rem, 9vw, 3rem); }

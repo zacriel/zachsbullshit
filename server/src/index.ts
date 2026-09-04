@@ -55,6 +55,30 @@ function main(): void {
   // Auth is core (not a toggleable module).
   app.use('/api/auth', createAuthRouter(db, requireAuth));
 
+  // Small key/value settings store. A few keys are readable by the public
+  // (e.g. the header social icons); the rest require auth to read.
+  const PUBLIC_SETTINGS = new Set(['header_icons']);
+  app.get('/api/settings/:key', (req, res) => {
+    const key = req.params.key;
+    if (!PUBLIC_SETTINGS.has(key)) {
+      res.status(404).json({ error: 'Not found' });
+      return;
+    }
+    const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key) as { value: string } | undefined;
+    let value: unknown = null;
+    try {
+      value = row ? JSON.parse(row.value) : null;
+    } catch {
+      value = null;
+    }
+    res.json({ key, value });
+  });
+  app.put('/api/settings/:key', requireAuth, (req, res) => {
+    const value = JSON.stringify((req.body as { value?: unknown })?.value ?? null);
+    db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(req.params.key, value);
+    res.json({ ok: true });
+  });
+
   // Admin-only file manager for the volume.
   app.use('/api/files', createFilesRouter(db, config, requireAuth));
 

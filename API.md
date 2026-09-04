@@ -109,6 +109,8 @@ Always present (not part of any toggleable module).
 | `GET` | `/api/healthz` | — | Liveness probe. `{ ok, ts }`. Used by Railway. |
 | `GET` | `/api/modules` | — | Manifest of enabled modules: `{ modules: [{ id, name, icon, public }] }`. Drives the frontend. |
 | `GET` | `/api/system` | ✅ | Admin diagnostics: database internals (size, WAL, pages, journal mode, per-table row counts), volume/disk usage, uploads + protected-file totals, and runtime info. Powers the admin **System** page. |
+| `GET` | `/api/settings/:key` | — | Reads an allow-listed public setting (currently `header_icons`, the header's social-icon row). `{ key, value }`. |
+| `PUT` | `/api/settings/:key` | ✅ | Writes a setting `{ value }` (JSON). Used by the header icon editor. |
 | `GET` | `/api/files` | ✅ | Lists every file on the volume (media + protected downloads) with size, type, date, and whether it's referenced by a tile. Powers the admin **Files** page. |
 | `GET` | `/api/files/protected/:name` | ✅ | Admin download of a protected file (bypasses the per-tile password gate). |
 | `DELETE` | `/api/files/:store/:name` | ✅ | Delete a file. `store` is `uploads` or `protected`. |

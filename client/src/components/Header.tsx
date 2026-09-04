@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Icon } from './Icon';
 import { useAuth } from '../auth/AuthContext';
+import { HeaderSocials } from './HeaderSocials';
 
 /**
  * Floating header. Flush and transparent at the top; once scrolled it
@@ -29,7 +30,9 @@ export function Header({ brand }: { brand: string }) {
           <img className="brand__logo" src="/logo.png" alt={brand} />
         </a>
 
-        {authed && (
+        <div className="header__right">
+          <HeaderSocials />
+          {authed && (
           <div className="header__actions">
             <button
               className={`btn btn--ghost btn--sm ${editMode ? 'edit-toggle--on' : ''}`}
@@ -45,7 +48,8 @@ export function Header({ brand }: { brand: string }) {
               <Icon name="right-from-bracket" />
             </button>
           </div>
-        )}
+          )}
+        </div>
       </div>
     </header>
   );
