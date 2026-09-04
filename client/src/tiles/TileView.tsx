@@ -96,6 +96,11 @@ function TabsTile({ tile }: { tile: Tile }) {
 
   return (
     <div className={`tile tile--tabs tile--tabs--${variant}`}>
+      {editing && (
+        <span className="tabs__grip" title="Drag to move this tile">
+          <Icon name="up-down-left-right" /> Drag to move
+        </span>
+      )}
       <div className="tabs__row" style={{ justifyContent: justify }}>
         {pages.map((p) => (
           <button

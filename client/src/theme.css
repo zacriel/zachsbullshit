@@ -1853,6 +1853,23 @@ video.tile-media__el {
   border-top: 1px dashed var(--border);
   font-size: 0.85rem;
 }
+.tabs__grip {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: grab;
+  color: var(--text-faint);
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  padding: 3px 12px;
+  border-radius: 999px;
+  border: 1px dashed var(--border-strong);
+  background: var(--surface-glass);
+  user-select: none;
+}
+.tabs__grip:hover { color: var(--text-muted); }
+.tabs__grip:active { cursor: grabbing; }
 
 /* ---------- Go-links admin ---------- */
 .golinks__intro { margin-bottom: 18px; }
