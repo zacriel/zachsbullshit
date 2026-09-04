@@ -192,19 +192,21 @@ h1, h2, h3 {
   padding: 0 12px 0 20px;
   border-radius: 999px;
   border: 1px solid transparent;
-  transition: all 0.35s var(--ease);
+  /* Transparent glass colour that fades to opaque when floating — animating
+     the colour's alpha (not the blur) keeps the transition clean. */
+  background: rgba(28, 28, 36, 0);
+  box-shadow: 0 0 0 0 transparent;
+  transition: background-color 0.35s var(--ease), box-shadow 0.35s var(--ease);
 }
-.header__bar > * { position: relative; z-index: 1; }
-/* condense into a floating glass pill once scrolled. No real border; a
-   masked pseudo-outline hugs the rounded left/right sides and fades toward
-   the top/bottom tips (and the horizontal center) — like parentheses. */
 .header--floating .header__bar {
   background: var(--surface-glass);
   backdrop-filter: blur(18px) saturate(1.4);
-  border-color: transparent;
   box-shadow: 0 14px 34px -22px rgba(0, 0, 0, 0.7);
 }
-.header--floating .header__bar::before {
+.header__bar > * { position: relative; z-index: 1; }
+/* A masked pseudo-outline hugs the rounded left/right sides and fades toward
+   the tips — present on the base bar, faded in when floating for a clean look. */
+.header__bar::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -212,12 +214,12 @@ h1, h2, h3 {
   border-radius: 999px;
   border: 1.5px solid rgba(168, 132, 255, 0.55);
   pointer-events: none;
-  /* Keep only the vertical middle band of the outline, so the straight
-     top/bottom edges vanish and each rounded side shows as an arc that
-     fades out toward its tips. */
+  opacity: 0;
+  transition: opacity 0.35s var(--ease);
   -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 35%, #000 65%, transparent 100%);
   mask-image: linear-gradient(to bottom, transparent 0%, #000 35%, #000 65%, transparent 100%);
 }
+.header--floating .header__bar::before { opacity: 1; }
 .brand {
   display: flex;
   align-items: center;
@@ -253,7 +255,7 @@ h1, h2, h3 {
   filter: brightness(0) invert(1);
   transition: height 0.35s var(--ease);
 }
-.header--floating .brand__logo { height: 44px; }
+.header--floating .brand__logo { height: 54px; }
 .nav {
   display: flex;
   gap: 2px;
@@ -1402,7 +1404,7 @@ h1, h2, h3 {
   .tile--banner { padding: 26px 22px; min-height: 220px; }
   .tile--banner__title { font-size: clamp(2rem, 9vw, 3rem); }
   .brand__logo { height: 52px; }
-  .header--floating .brand__logo { height: 40px; }
+  .header--floating .brand__logo { height: 48px; }
   /* Command snippets: wrap instead of forcing a horizontal scroll. */
   .tile--command__code { white-space: pre-wrap; word-break: break-word; }
   .tile--clock__time { font-size: clamp(1.3rem, 6vw, 2rem); }
