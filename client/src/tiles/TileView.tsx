@@ -193,13 +193,15 @@ function LinkTile({ tile }: { tile: Tile }) {
       rel="noopener noreferrer"
       onClick={() => trackClick(tile.id)}
     >
-      <span className="link-card__icon">
-        {favi && !icoFailed ? (
-          <img className="link-card__favicon" src={favi} alt="" loading="lazy" onError={() => setIcoFailed(true)} />
-        ) : (
-          <Icon name={c.icon || 'link'} />
-        )}
-      </span>
+      {!c.hideIcon && (
+        <span className="link-card__icon">
+          {favi && !icoFailed ? (
+            <img className="link-card__favicon" src={favi} alt="" loading="lazy" onError={() => setIcoFailed(true)} />
+          ) : (
+            <Icon name={c.icon || 'link'} />
+          )}
+        </span>
+      )}
       <span className="link-card__body">
         <span className="link-card__label">{c.label || 'Link'}</span>
         {c.description && <span className="link-card__desc">{c.description}</span>}
@@ -217,7 +219,7 @@ function ProjectTile({ tile }: { tile: Tile }) {
       {c.image_url && <img className="project-card__img" src={c.image_url} alt={c.title} loading="lazy" />}
       <div className="project-card__body">
         <h3 className="project-card__title">
-          <Icon name={c.icon || 'cube'} fixedWidth />
+          {!c.hideIcon && <Icon name={c.icon || 'cube'} fixedWidth />}
           {c.title || 'Project'}
         </h3>
         {c.description && <p className="project-card__desc">{c.description}</p>}
@@ -273,9 +275,11 @@ function ServiceTile({ tile, status }: { tile: Tile; status?: ServiceStatus }) {
   return (
     <div className="tile tile--service">
       <div className="tile--service__head">
-        <span className="link-card__icon" style={{ width: 40, height: 40, fontSize: '1rem' }}>
-          <Icon name={c.icon || (isMc ? 'cube' : 'server')} />
-        </span>
+        {!c.hideIcon && (
+          <span className="link-card__icon" style={{ width: 40, height: 40, fontSize: '1rem' }}>
+            <Icon name={c.icon || (isMc ? 'cube' : 'server')} />
+          </span>
+        )}
         <div style={{ minWidth: 0, flex: 1 }}>
           <div className="tile--service__name">{c.name || 'Service'}</div>
           <div className="admin-row__muted" style={{ wordBreak: 'break-word' }}>
@@ -470,9 +474,11 @@ function DownloadTile({ tile }: { tile: Tile }) {
   return (
     <div className="tile tile--download">
       <div className="tile--download__head">
-        <span className="link-card__icon" style={{ width: 44, height: 44 }}>
-          <Icon name={c.icon || 'download'} />
-        </span>
+        {!c.hideIcon && (
+          <span className="link-card__icon" style={{ width: 44, height: 44 }}>
+            <Icon name={c.icon || 'download'} />
+          </span>
+        )}
         <div style={{ minWidth: 0, flex: 1 }}>
           <div className="tile--download__title">
             {c.title || 'Download'} {protectedFile && <Icon name="lock" className="tile--download__lock" />}
@@ -589,7 +595,7 @@ function CommandTile({ tile }: { tile: Tile }) {
     <div className="tile tile--command">
       {c.label && (
         <div className="tile--command__label">
-          <Icon name={c.icon || 'terminal'} /> {c.label}
+          {!c.hideIcon && <Icon name={c.icon || 'terminal'} />} {c.label}
         </div>
       )}
       <div className="tile--command__row">

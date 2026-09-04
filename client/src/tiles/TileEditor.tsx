@@ -95,8 +95,13 @@ export function TileEditor({
                 <Field label="Label"><input className="input" value={config.label || ''} onChange={(e) => set('label', e.target.value)} /></Field>
                 <Field label="URL"><input className="input" value={config.url || ''} onChange={(e) => set('url', e.target.value)} placeholder="https://…" /></Field>
                 <Field wide label="Description"><input className="input" value={config.description || ''} onChange={(e) => set('description', e.target.value)} /></Field>
-                <Toggle label="Use the destination site's favicon as the icon" checked={!!config.favicon} onChange={(v) => set('favicon', v)} />
-                <Field wide label={config.favicon ? 'Fallback icon (if the favicon can’t load)' : 'Icon'}><IconPicker value={config.icon || ''} onChange={(v) => set('icon', v)} /></Field>
+                <Toggle label="Show icon" checked={!config.hideIcon} onChange={(v) => set('hideIcon', !v)} />
+                {!config.hideIcon && (
+                  <>
+                    <Toggle label="Use the destination site's favicon as the icon" checked={!!config.favicon} onChange={(v) => set('favicon', v)} />
+                    <Field wide label={config.favicon ? 'Fallback icon (if the favicon can’t load)' : 'Icon'}><IconPicker value={config.icon || ''} onChange={(v) => set('icon', v)} /></Field>
+                  </>
+                )}
               </>
             )}
 
@@ -139,7 +144,8 @@ export function TileEditor({
                 ) : (
                   <Field wide label="URL to check & open"><input className="input" value={config.url || ''} onChange={(e) => set('url', e.target.value)} placeholder="https://…" /></Field>
                 )}
-                <Field wide label="Icon"><IconPicker value={config.icon || ''} onChange={(v) => set('icon', v)} /></Field>
+                <Toggle label="Show icon" checked={!config.hideIcon} onChange={(v) => set('hideIcon', !v)} />
+                {!config.hideIcon && <Field wide label="Icon"><IconPicker value={config.icon || ''} onChange={(v) => set('icon', v)} /></Field>}
               </>
             )}
 
@@ -150,7 +156,8 @@ export function TileEditor({
                 <Field wide label="Description"><textarea className="textarea" style={{ minHeight: 70 }} value={config.description || ''} onChange={(e) => set('description', e.target.value)} /></Field>
                 <Field label="Live URL"><input className="input" value={config.url || ''} onChange={(e) => set('url', e.target.value)} /></Field>
                 <Field label="Repo URL"><input className="input" value={config.repo_url || ''} onChange={(e) => set('repo_url', e.target.value)} /></Field>
-                <Field wide label="Icon"><IconPicker value={config.icon || ''} onChange={(v) => set('icon', v)} /></Field>
+                <Toggle label="Show icon" checked={!config.hideIcon} onChange={(v) => set('hideIcon', !v)} />
+                {!config.hideIcon && <Field wide label="Icon"><IconPicker value={config.icon || ''} onChange={(v) => set('icon', v)} /></Field>}
                 <Field wide label="Image URL"><input className="input" value={config.image_url || ''} onChange={(e) => set('image_url', e.target.value)} /></Field>
               </>
             )}
@@ -201,7 +208,8 @@ export function TileEditor({
             {tile.type === 'download' && (
               <>
                 <Field label="Title"><input className="input" value={config.title || ''} onChange={(e) => set('title', e.target.value)} /></Field>
-                <Field label="Icon"><IconPicker value={config.icon || ''} onChange={(v) => set('icon', v)} /></Field>
+                {!config.hideIcon && <Field label="Icon"><IconPicker value={config.icon || ''} onChange={(v) => set('icon', v)} /></Field>}
+                <Toggle label="Show icon" checked={!config.hideIcon} onChange={(v) => set('hideIcon', !v)} />
                 <Field wide label="Description"><input className="input" value={config.description || ''} onChange={(e) => set('description', e.target.value)} /></Field>
                 <FileField
                   wide
@@ -237,7 +245,8 @@ export function TileEditor({
             {tile.type === 'command' && (
               <>
                 <Field label="Label"><input className="input" value={config.label || ''} onChange={(e) => set('label', e.target.value)} /></Field>
-                <Field label="Icon"><IconPicker value={config.icon || ''} onChange={(v) => set('icon', v)} /></Field>
+                {!config.hideIcon && <Field label="Icon"><IconPicker value={config.icon || ''} onChange={(v) => set('icon', v)} /></Field>}
+                <Toggle label="Show icon" checked={!config.hideIcon} onChange={(v) => set('hideIcon', !v)} />
                 <Field wide label="Command / snippet"><textarea className="textarea" style={{ minHeight: 60, fontFamily: 'var(--font-mono, monospace)' }} value={config.command || ''} onChange={(e) => set('command', e.target.value)} /></Field>
               </>
             )}

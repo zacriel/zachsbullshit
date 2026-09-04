@@ -7,6 +7,10 @@ REM ============================================================
 REM Always run from the folder this script lives in.
 cd /d "%~dp0"
 
+REM Delayed expansion lets us handle commit messages that contain quotes,
+REM ampersands, and other characters that would otherwise break the command.
+setlocal EnableExtensions EnableDelayedExpansion
+
 REM Make sure we're inside a git repo with a remote set.
 git rev-parse --is-inside-work-tree >nul 2>&1
 if errorlevel 1 (
@@ -35,7 +39,11 @@ echo  Staging changes...
 git add -A
 
 echo  Committing...
-git commit -m "%msg%"
+REM Write the message to a temp file and commit with -F, so any quotes or
+REM special characters in it are taken literally (no shell re-parsing).
+> "%TEMP%\zbs_commit_msg.txt" (echo(!msg!)
+git commit -F "%TEMP%\zbs_commit_msg.txt"
+del "%TEMP%\zbs_commit_msg.txt" >nul 2>&1
 
 REM Detect the current branch name.
 for /f "delims=" %%b in ('git rev-parse --abbrev-ref HEAD') do set "branch=%%b"
