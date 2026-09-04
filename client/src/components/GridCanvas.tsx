@@ -247,6 +247,7 @@ export function GridCanvas() {
           cols={{ lg: COLS, xs: 2 }}
           rowHeight={ROW_H}
           margin={[16, 16]}
+          containerPadding={[0, 0]}
           isDraggable={canEdit}
           isResizable={canEdit}
           resizeHandles={['s', 'e', 'se']}
