@@ -21,8 +21,12 @@ const log = createLogger('tiles');
 
 const TILE_TYPES = [
   'link', 'banner', 'service', 'project', 'text', 'heading', 'contact',
-  'icons', 'download', 'embed', 'command', 'clock', 'weather', 'rss',
+  'icons', 'download', 'embed', 'command', 'clock', 'weather', 'rss', 'tabs',
 ] as const;
+
+// "tabs" tiles are the page navigation. They're global (not owned by a single
+// page) so they appear on every page and can switch between them.
+const GLOBAL_TILE_TYPES = new Set<string>(['tabs']);
 
 interface TileRow {
   id: number;
@@ -33,6 +37,15 @@ interface TileRow {
   w: number;
   h: number;
   enabled: number;
+  sort_order: number;
+  page_id: number | null;
+  created_at: string;
+}
+
+interface PageRow {
+  id: number;
+  name: string;
+  slug: string;
   sort_order: number;
   created_at: string;
 }
@@ -57,6 +70,15 @@ const createSchema = z.object({
   w: z.number().int().min(1).max(12).default(3),
   h: z.number().int().min(1).max(24).default(2),
   enabled: z.boolean().default(true),
+  page_id: z.number().int().positive().optional(),
+});
+
+const pageSchema = z.object({
+  name: z.string().trim().min(1).max(60),
+});
+
+const reorderSchema = z.object({
+  ids: z.array(z.number().int().positive()),
 });
 
 const updateSchema = z.object({
@@ -109,16 +131,76 @@ function migrate({ db }: ModuleContext): void {
       tile_id       INTEGER PRIMARY KEY,
       password_hash TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS pages (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      name       TEXT NOT NULL,
+      slug       TEXT NOT NULL UNIQUE,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
   `);
+
+  // Add the page_id column to existing tiles databases (pre-pages installs).
+  const cols = db.prepare('PRAGMA table_info(tiles)').all() as { name: string }[];
+  if (!cols.some((c) => c.name === 'page_id')) {
+    db.exec('ALTER TABLE tiles ADD COLUMN page_id INTEGER');
+  }
+
+  // Ensure at least one page exists, then adopt any orphaned tiles onto it.
+  const pageCount = (db.prepare('SELECT COUNT(*) AS n FROM pages').get() as { n: number }).n;
+  if (pageCount === 0) {
+    db.prepare('INSERT INTO pages (name, slug, sort_order) VALUES (?, ?, ?)').run('Home', 'home', 0);
+  }
+  const homeId = (db.prepare('SELECT id FROM pages ORDER BY sort_order, id LIMIT 1').get() as { id: number }).id;
+  // Existing tiles (and any that predate pages) live on the first page — except
+  // globals like the tabs nav, which stay unassigned so they show everywhere.
+  db.prepare(
+    `UPDATE tiles SET page_id = ? WHERE page_id IS NULL AND type NOT IN (${[...GLOBAL_TILE_TYPES].map(() => '?').join(',')})`,
+  ).run(homeId, ...GLOBAL_TILE_TYPES);
 
   // Seed a starter layout only when completely empty.
   const count = (db.prepare('SELECT COUNT(*) AS n FROM tiles').get() as { n: number }).n;
-  if (count === 0) seedTiles(db);
+  if (count === 0) seedTiles(db, homeId);
 }
 
-function seedTiles(db: import('better-sqlite3').Database): void {
+/** slugify a page name into a URL-safe, unique-ish slug. */
+function slugify(name: string): string {
+  return (
+    name
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 40) || 'page'
+  );
+}
+
+/** Pick a slug not already used by another page. */
+function uniqueSlug(db: Database.Database, base: string): string {
+  let slug = base;
+  let n = 2;
+  while (db.prepare('SELECT 1 FROM pages WHERE slug = ?').get(slug)) {
+    slug = `${base}-${n++}`;
+  }
+  return slug;
+}
+
+/** Resolve a ?page query (id or slug) to a page id, defaulting to the first. */
+function resolvePageId(db: Database.Database, q: unknown): number | null {
+  const first = db.prepare('SELECT id FROM pages ORDER BY sort_order, id LIMIT 1').get() as { id: number } | undefined;
+  if (q == null || q === '') return first?.id ?? null;
+  const asNum = Number(q);
+  if (Number.isInteger(asNum) && asNum > 0) {
+    const hit = db.prepare('SELECT id FROM pages WHERE id = ?').get(asNum) as { id: number } | undefined;
+    if (hit) return hit.id;
+  }
+  const bySlug = db.prepare('SELECT id FROM pages WHERE slug = ?').get(String(q)) as { id: number } | undefined;
+  return bySlug?.id ?? first?.id ?? null;
+}
+
+function seedTiles(db: import('better-sqlite3').Database, pageId: number): void {
   const insert = db.prepare(
-    'INSERT INTO tiles (type, config, x, y, w, h, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    'INSERT INTO tiles (type, config, x, y, w, h, sort_order, page_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
   );
   const rows: [string, object, number, number, number, number, number][] = [
     ['banner', { title: 'zachsbullshit', subtitle: 'Everything I build, break, and host.', image_url: '', align: 'center' }, 0, 0, 12, 4, 0],
@@ -129,7 +211,7 @@ function seedTiles(db: import('better-sqlite3').Database): void {
     ['service', { name: 'Minecraft', kind: 'minecraft', host: 'mc.zachsbullshit.com', icon: 'cube' }, 0, 8, 4, 3, 5],
     ['contact', { title: 'Get in touch', subtitle: 'Questions, ideas, or just to say hi.' }, 4, 8, 6, 6, 6],
   ];
-  const tx = db.transaction(() => rows.forEach((r) => insert.run(r[0], JSON.stringify(r[1]), r[2], r[3], r[4], r[5], r[6])));
+  const tx = db.transaction(() => rows.forEach((r) => insert.run(r[0], JSON.stringify(r[1]), r[2], r[3], r[4], r[5], r[6], pageId)));
   tx();
   log.info(`Seeded ${rows.length} starter tiles`);
 }
@@ -145,7 +227,7 @@ function serialize(row: TileRow, admin = false) {
   delete config.password;
   // The internal storage handle for a protected file is hidden from visitors.
   if (!admin && row.type === 'download') delete config.file;
-  return { id: row.id, type: row.type, config, x: row.x, y: row.y, w: row.w, h: row.h, enabled: !!row.enabled };
+  return { id: row.id, type: row.type, config, x: row.x, y: row.y, w: row.w, h: row.h, enabled: !!row.enabled, page_id: row.page_id };
 }
 
 /**
@@ -347,9 +429,92 @@ function register(ctx: ModuleContext): Router {
     }
   });
 
-  // Public: enabled tiles + latest service statuses.
-  router.get('/', (_req, res) => {
-    const rows = db.prepare('SELECT * FROM tiles WHERE enabled = 1 ORDER BY y, x, id').all() as TileRow[];
+  // ---- Pages (tabs) ------------------------------------------------------
+  // Public: the list of pages, ordered. Drives the tabs nav.
+  router.get('/pages', (_req, res) => {
+    const rows = db.prepare('SELECT id, name, slug, sort_order FROM pages ORDER BY sort_order, id').all() as PageRow[];
+    res.json({ pages: rows });
+  });
+
+  // Admin: create a page.
+  router.post('/pages', requireAuth, (req, res) => {
+    const parsed = pageSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: 'Invalid page', details: parsed.error.flatten() });
+      return;
+    }
+    const slug = uniqueSlug(db, slugify(parsed.data.name));
+    const nextOrder = ((db.prepare('SELECT MAX(sort_order) AS m FROM pages').get() as { m: number | null }).m ?? -1) + 1;
+    const info = db.prepare('INSERT INTO pages (name, slug, sort_order) VALUES (?, ?, ?)').run(parsed.data.name, slug, nextOrder);
+    const page = db.prepare('SELECT id, name, slug, sort_order FROM pages WHERE id = ?').get(info.lastInsertRowid) as PageRow;
+    res.status(201).json({ page });
+  });
+
+  // Admin: reorder pages (must precede "/pages/:id").
+  router.put('/pages/reorder', requireAuth, (req, res) => {
+    const parsed = reorderSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: 'Invalid order' });
+      return;
+    }
+    const stmt = db.prepare('UPDATE pages SET sort_order = ? WHERE id = ?');
+    const tx = db.transaction(() => parsed.data.ids.forEach((id, i) => stmt.run(i, id)));
+    tx();
+    res.json({ ok: true });
+  });
+
+  // Admin: rename a page (slug stays fixed so existing links keep working).
+  router.put('/pages/:id', requireAuth, (req, res) => {
+    const id = Number(req.params.id);
+    const parsed = pageSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: 'Invalid page' });
+      return;
+    }
+    const info = db.prepare('UPDATE pages SET name = ? WHERE id = ?').run(parsed.data.name, id);
+    if (info.changes === 0) {
+      res.status(404).json({ error: 'Page not found' });
+      return;
+    }
+    const page = db.prepare('SELECT id, name, slug, sort_order FROM pages WHERE id = ?').get(id) as PageRow;
+    res.json({ page });
+  });
+
+  // Admin: delete a page and every tile on it (never the last page).
+  router.delete('/pages/:id', requireAuth, (req, res) => {
+    const id = Number(req.params.id);
+    const total = (db.prepare('SELECT COUNT(*) AS n FROM pages').get() as { n: number }).n;
+    if (total <= 1) {
+      res.status(400).json({ error: 'Cannot delete the only page' });
+      return;
+    }
+    const doomed = db.prepare('SELECT * FROM tiles WHERE page_id = ?').all(id) as TileRow[];
+    const tx = db.transaction(() => {
+      for (const t of doomed) {
+        if (t.type === 'download') {
+          try {
+            const cfg = JSON.parse(t.config) as { file?: string };
+            if (cfg.file) fs.rmSync(path.join(filesPath, path.basename(cfg.file)), { force: true });
+          } catch {
+            /* ignore */
+          }
+        }
+        db.prepare('DELETE FROM service_status WHERE tile_id = ?').run(t.id);
+        db.prepare('DELETE FROM download_secrets WHERE tile_id = ?').run(t.id);
+      }
+      db.prepare('DELETE FROM tiles WHERE page_id = ?').run(id);
+      db.prepare('DELETE FROM pages WHERE id = ?').run(id);
+    });
+    tx();
+    res.json({ ok: true });
+  });
+
+  // Public: enabled tiles for one page (+ globals like the tabs nav).
+  router.get('/', (req, res) => {
+    const pageId = resolvePageId(db, req.query.page);
+    const rows = db
+      .prepare('SELECT * FROM tiles WHERE enabled = 1 AND (page_id = ? OR page_id IS NULL) ORDER BY y, x, id')
+      .all(pageId) as TileRow[];
     res.json({ tiles: rows.map((r) => serialize(r)) });
   });
 
@@ -364,9 +529,12 @@ function register(ctx: ModuleContext): Router {
     res.json({ statuses });
   });
 
-  // Admin: all tiles incl. disabled.
-  router.get('/all', requireAuth, (_req, res) => {
-    const rows = db.prepare('SELECT * FROM tiles ORDER BY y, x, id').all() as TileRow[];
+  // Admin: all tiles incl. disabled, for one page (+ globals).
+  router.get('/all', requireAuth, (req, res) => {
+    const pageId = resolvePageId(db, req.query.page);
+    const rows = db
+      .prepare('SELECT * FROM tiles WHERE page_id = ? OR page_id IS NULL ORDER BY y, x, id')
+      .all(pageId) as TileRow[];
     res.json({ tiles: rows.map((r) => serialize(r, true)) });
   });
 
@@ -378,9 +546,12 @@ function register(ctx: ModuleContext): Router {
     }
     const d = parsed.data;
     const { config: clean, password } = extractPassword(d.type, d.config);
+    // Global tiles (the tabs nav) are unassigned so they appear on every page;
+    // everything else belongs to the requested page, or the first page.
+    const pageId = GLOBAL_TILE_TYPES.has(d.type) ? null : resolvePageId(db, d.page_id);
     const info = db
-      .prepare('INSERT INTO tiles (type, config, x, y, w, h, enabled) VALUES (?, ?, ?, ?, ?, ?, ?)')
-      .run(d.type, JSON.stringify(clean), d.x, d.y, d.w, d.h, d.enabled ? 1 : 0);
+      .prepare('INSERT INTO tiles (type, config, x, y, w, h, enabled, page_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(d.type, JSON.stringify(clean), d.x, d.y, d.w, d.h, d.enabled ? 1 : 0, pageId);
     applyDownloadSecret(db, Number(info.lastInsertRowid), password);
     const row = db.prepare('SELECT * FROM tiles WHERE id = ?').get(info.lastInsertRowid) as TileRow;
     res.status(201).json({ tile: serialize(row, true) });

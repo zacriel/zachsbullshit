@@ -3,6 +3,7 @@ import { api, ApiError, trackClick } from '../api';
 import { useAuth } from '../auth/AuthContext';
 import { Icon } from '../components/Icon';
 import { TileMedia } from './media';
+import { usePages } from './PagesContext';
 import type { ServiceStatus, Tile } from '../types';
 
 /** Renders a single tile in view (non-editing) mode by its type. */
@@ -36,9 +37,102 @@ export function TileView({ tile, status }: { tile: Tile; status?: ServiceStatus 
       return <WeatherTile tile={tile} />;
     case 'rss':
       return <RssTile tile={tile} />;
+    case 'tabs':
+      return <TabsTile tile={tile} />;
     default:
       return null;
   }
+}
+
+/** Build a favicon URL for a link's destination host (Google's S2 service). */
+function faviconUrl(rawUrl: string): string | null {
+  try {
+    const u = new URL(rawUrl);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
+    return `https://www.google.com/s2/favicons?sz=64&domain=${u.hostname}`;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Page navigation, rendered as an ordinary (global) tile so it can be placed
+ * anywhere on the grid. Visitors click tabs to switch pages; admins can add,
+ * rename, reorder, and delete pages right here in edit mode.
+ */
+function TabsTile({ tile }: { tile: Tile }) {
+  const c = tile.config;
+  const { authed, editMode } = useAuth();
+  const { pages, activePageId, setActivePage, addPage, renamePage, deletePage, reorderPages } = usePages();
+  const editing = !!authed && editMode;
+  const justify = c.align === 'left' ? 'flex-start' : c.align === 'right' ? 'flex-end' : 'center';
+  const variant = c.variant === 'underline' ? 'underline' : 'pills';
+  const activeIdx = pages.findIndex((p) => p.id === activePageId);
+  const active = activeIdx >= 0 ? pages[activeIdx] : null;
+
+  async function onAdd() {
+    const name = window.prompt('New page name', 'New page');
+    if (name && name.trim()) await addPage(name.trim());
+  }
+  async function onRename() {
+    if (!active) return;
+    const name = window.prompt('Rename page', active.name);
+    if (name && name.trim() && name.trim() !== active.name) await renamePage(active.id, name.trim());
+  }
+  async function onDelete() {
+    if (!active || pages.length <= 1) return;
+    if (window.confirm(`Delete “${active.name}” and every tile on it? This can't be undone.`)) {
+      await deletePage(active.id);
+    }
+  }
+  function move(dir: -1 | 1) {
+    if (activeIdx < 0) return;
+    const j = activeIdx + dir;
+    if (j < 0 || j >= pages.length) return;
+    const ids = pages.map((p) => p.id);
+    [ids[activeIdx], ids[j]] = [ids[j], ids[activeIdx]];
+    void reorderPages(ids);
+  }
+
+  return (
+    <div className={`tile tile--tabs tile--tabs--${variant}`}>
+      <div className="tabs__row" style={{ justifyContent: justify }}>
+        {pages.map((p) => (
+          <button
+            key={p.id}
+            className={`tabnav ${p.id === activePageId ? 'tabnav--on' : ''}`}
+            onClick={() => setActivePage(p.id)}
+          >
+            {p.name}
+          </button>
+        ))}
+        {editing && (
+          <button className="tabnav tabnav--add" onClick={onAdd} title="Add page">
+            <Icon name="plus" />
+          </button>
+        )}
+        {pages.length === 0 && !editing && <span className="admin-row__muted">No pages</span>}
+      </div>
+
+      {editing && active && (
+        <div className="tabs__admin">
+          <span className="admin-row__muted" style={{ marginRight: 4 }}>Page “{active.name}”:</span>
+          <button className="btn btn--ghost btn--sm" onClick={() => move(-1)} disabled={activeIdx === 0} title="Move left">
+            <Icon name="arrow-left" />
+          </button>
+          <button className="btn btn--ghost btn--sm" onClick={() => move(1)} disabled={activeIdx === pages.length - 1} title="Move right">
+            <Icon name="arrow-right" />
+          </button>
+          <button className="btn btn--ghost btn--sm" onClick={onRename}>
+            <Icon name="pen" /> Rename
+          </button>
+          <button className="btn btn--danger btn--sm" onClick={onDelete} disabled={pages.length <= 1}>
+            <Icon name="trash" /> Delete
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function BannerTile({ tile }: { tile: Tile }) {
@@ -82,6 +176,10 @@ function HeadingTile({ tile }: { tile: Tile }) {
 function LinkTile({ tile }: { tile: Tile }) {
   const c = tile.config;
   const url: string = c.url || '#';
+  const [icoFailed, setIcoFailed] = useState(false);
+  // When "use site favicon" is on, show the destination's favicon; fall back to
+  // the chosen FontAwesome icon if it can't load.
+  const favi = c.favicon ? faviconUrl(url) : null;
   return (
     <a
       className="tile tile--link"
@@ -91,7 +189,11 @@ function LinkTile({ tile }: { tile: Tile }) {
       onClick={() => trackClick(tile.id)}
     >
       <span className="link-card__icon">
-        <Icon name={c.icon || 'link'} />
+        {favi && !icoFailed ? (
+          <img className="link-card__favicon" src={favi} alt="" loading="lazy" onError={() => setIcoFailed(true)} />
+        ) : (
+          <Icon name={c.icon || 'link'} />
+        )}
       </span>
       <span className="link-card__body">
         <span className="link-card__label">{c.label || 'Link'}</span>

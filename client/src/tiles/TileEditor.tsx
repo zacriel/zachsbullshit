@@ -95,7 +95,30 @@ export function TileEditor({
                 <Field label="Label"><input className="input" value={config.label || ''} onChange={(e) => set('label', e.target.value)} /></Field>
                 <Field label="URL"><input className="input" value={config.url || ''} onChange={(e) => set('url', e.target.value)} placeholder="https://…" /></Field>
                 <Field wide label="Description"><input className="input" value={config.description || ''} onChange={(e) => set('description', e.target.value)} /></Field>
-                <Field wide label="Icon"><IconPicker value={config.icon || ''} onChange={(v) => set('icon', v)} /></Field>
+                <Toggle label="Use the destination site's favicon as the icon" checked={!!config.favicon} onChange={(v) => set('favicon', v)} />
+                <Field wide label={config.favicon ? 'Fallback icon (if the favicon can’t load)' : 'Icon'}><IconPicker value={config.icon || ''} onChange={(v) => set('icon', v)} /></Field>
+              </>
+            )}
+
+            {tile.type === 'tabs' && (
+              <>
+                <Field label="Alignment">
+                  <select className="input" value={config.align || 'center'} onChange={(e) => set('align', e.target.value)}>
+                    <option value="left">Left</option>
+                    <option value="center">Center</option>
+                    <option value="right">Right</option>
+                  </select>
+                </Field>
+                <Field label="Style">
+                  <select className="input" value={config.variant || 'pills'} onChange={(e) => set('variant', e.target.value)}>
+                    <option value="pills">Pills</option>
+                    <option value="underline">Underline</option>
+                  </select>
+                </Field>
+                <p className="span-2 admin-row__muted" style={{ fontSize: '0.85rem', margin: 0 }}>
+                  Add, rename, reorder and delete pages using the controls on the tabs tile itself while in edit mode. The
+                  tabs nav is global — it shows on every page.
+                </p>
               </>
             )}
 

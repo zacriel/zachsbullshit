@@ -19,7 +19,8 @@ export type TileType =
   | 'command'
   | 'clock'
   | 'weather'
-  | 'rss';
+  | 'rss'
+  | 'tabs';
 
 export interface Tile {
   id: number;
@@ -31,6 +32,23 @@ export interface Tile {
   w: number;
   h: number;
   enabled: boolean;
+  // Which page this tile lives on; null = global (shown on every page), e.g. tabs.
+  page_id: number | null;
+}
+
+export interface Page {
+  id: number;
+  name: string;
+  slug: string;
+  sort_order: number;
+}
+
+export interface ShortLink {
+  id: number;
+  slug: string;
+  url: string;
+  clicks: number;
+  created_at: string;
 }
 
 export interface ServiceStatus {

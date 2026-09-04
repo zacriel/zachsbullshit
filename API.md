@@ -62,9 +62,29 @@ The primary content system: a grid of tiles, each with a `type`, a JSON
 `embed` (allow-listed
 iframe: YouTube/Vimeo/Maps/CodePen/Spotify…), `command` (copy-to-clipboard
 snippet), `clock` (live clock or countdown), `weather` (Open-Meteo), `rss`
-(RSS/Atom feed). A download tile's `password` is write-only — hashed with bcrypt
+(RSS/Atom feed), `tabs` (page navigation — see **Pages** below). A download
+tile's `password` is write-only — hashed with bcrypt
 into `download_secrets`, never returned; the file lives outside the public
-`/uploads` dir and is reachable only through the gated route below.
+`/uploads` dir and is reachable only through the gated route below. `link` tiles
+may set `config.favicon: true` to display the destination site's favicon in
+place of the FontAwesome icon (the icon is kept as a fallback).
+
+### Pages (tabs)
+
+The dashboard is organised into **pages**. Every tile carries a `page_id`, and
+`GET /api/tiles` / `GET /api/tiles/all` accept `?page=<id|slug>` to fetch one
+page's tiles (defaulting to the first page). A `tabs` tile is **global**
+(`page_id: null`) so it appears on every page; clicking a tab switches the
+visible page client-side (deep-linkable via the `#p=<slug>` URL hash). Pages are
+managed inline from the tabs tile in edit mode.
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/api/tiles/pages` | — | Ordered list of pages: `{ pages: [{ id, name, slug, sort_order }] }`. |
+| `POST` | `/api/tiles/pages` | ✅ | Create a page `{ name }` (slug auto-generated, unique). |
+| `PUT` | `/api/tiles/pages/reorder` | ✅ | Reorder pages: `{ ids: [...] }`. |
+| `PUT` | `/api/tiles/pages/:id` | ✅ | Rename a page `{ name }` (slug stays fixed). |
+| `DELETE` | `/api/tiles/pages/:id` | ✅ | Delete a page and every tile on it (never the last page). |
 
 Any non-banner tile may set `config.bg_image` (a URL, or an uploaded image/video
 URL) for a per-tile background — images and MP4/WebM video both work, with
@@ -74,10 +94,10 @@ tiles post to the contact module, so `MODULE_CONTACT` must be enabled (default o
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| `GET` | `/api/tiles` | — | Enabled tiles, ordered for layout. |
+| `GET` | `/api/tiles` | — | Enabled tiles for a page (+ globals), ordered for layout. Accepts `?page=<id\|slug>`. |
 | `GET` | `/api/tiles/status` | — | Latest status snapshot for service tiles: `{ statuses: { [tileId]: { status, code, latency_ms, players_online, players_max, motd, version, checked_at } } }`. |
-| `GET` | `/api/tiles/all` | ✅ | All tiles incl. disabled. |
-| `POST` | `/api/tiles` | ✅ | Create a tile `{ type, config, x, y, w, h, enabled }`. |
+| `GET` | `/api/tiles/all` | ✅ | All tiles incl. disabled, for a page (+ globals). Accepts `?page=<id\|slug>`. |
+| `POST` | `/api/tiles` | ✅ | Create a tile `{ type, config, x, y, w, h, enabled, page_id? }`. `tabs` tiles are forced global; others default to the first page. |
 | `POST` | `/api/tiles/upload` | ✅ | Upload an image or MP4/WebM video (multipart `file`, ≤64 MB). Returns `{ url }` served from `/uploads/…` (stored on the volume). |
 | `POST` | `/api/tiles/upload-file` | ✅ | Upload any file for a download tile (multipart `file`, ≤200 MB). Returns `{ file, filename, size }`; stored in a non-public dir. |
 | `POST` | `/api/tiles/:id/download` | — | Download a `download` tile's file. Body `{ password }` required when the tile is protected. Streams the file as an attachment. |
@@ -114,6 +134,20 @@ Always present (not part of any toggleable module).
 | `GET` | `/api/files` | ✅ | Lists every file on the volume (media + protected downloads) with size, type, date, and whether it's referenced by a tile. Powers the admin **Files** page. |
 | `GET` | `/api/files/protected/:name` | ✅ | Admin download of a protected file (bypasses the per-tile password gate). |
 | `DELETE` | `/api/files/:store/:name` | ✅ | Delete a file. `store` is `uploads` or `protected`. |
+
+### Go-links (URL shortener)
+
+Short, memorable redirects managed from the admin **Go links** page. A slug maps
+to any `http(s)://` or `mailto:` destination; the public redirect lives at
+`/go/<slug>` (outside `/api`) and increments a click counter on each hit.
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/api/shortlinks` | ✅ | List all go-links `{ links: [{ id, slug, url, clicks, created_at }] }`. |
+| `POST` | `/api/shortlinks` | ✅ | Create `{ slug, url }` (slug: letters/numbers/`-`/`_`; unique, case-insensitive). |
+| `PUT` | `/api/shortlinks/:id` | ✅ | Update `{ slug?, url? }`. |
+| `DELETE` | `/api/shortlinks/:id` | ✅ | Delete a go-link. |
+| `GET` | `/go/:slug` | — | Public 302 redirect to the destination; bumps the click count. |
 
 ---
 

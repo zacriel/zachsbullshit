@@ -22,9 +22,16 @@ export const TILE_DEFAULTS: Record<
   link: {
     label: 'Link',
     icon: 'link',
-    config: { label: 'New link', url: 'https://example.com', icon: 'link', description: '' },
+    config: { label: 'New link', url: 'https://example.com', icon: 'link', description: '', favicon: false },
     w: 3,
     h: 2,
+  },
+  tabs: {
+    label: 'Tabs / navigation',
+    icon: 'folder-tree',
+    config: { align: 'center', variant: 'pills' },
+    w: 12,
+    h: 1,
   },
   service: {
     label: 'Service / Minecraft',
@@ -106,6 +113,6 @@ export const TILE_DEFAULTS: Record<
 };
 
 export const PALETTE: TileType[] = [
-  'banner', 'heading', 'link', 'icons', 'service', 'project',
+  'tabs', 'banner', 'heading', 'link', 'icons', 'service', 'project',
   'text', 'contact', 'download', 'embed', 'command', 'clock', 'weather', 'rss',
 ];
