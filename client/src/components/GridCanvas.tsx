@@ -183,19 +183,29 @@ export function GridCanvas() {
   }, [notify]);
 
   // ---- Tiles (for the active page + globals) -----------------------------
-  const loadTiles = useCallback(() => {
+  // Bumped after each successful load so the board can animate itself in.
+  const [pageKey, setPageKey] = useState(0);
+
+  // Fetch the active page's tiles. We deliberately keep the previous page's
+  // tiles on screen until the new ones arrive (no blank spinner mid-switch),
+  // then bump `pageKey` so the board fades/rises in cleanly.
+  useEffect(() => {
     if (!activePageId) return;
+    let cancelled = false;
     const base = canEdit ? '/tiles/all' : '/tiles';
+    const done = (next: Tile[]) => {
+      if (cancelled) return;
+      setTiles(next);
+      setPageKey((k) => k + 1);
+    };
     api
       .get<{ tiles: Tile[] }>(`${base}?page=${activePageId}`)
-      .then((r) => setTiles(r.tiles))
-      .catch(() => setTiles([]));
-  }, [canEdit, activePageId]);
-
-  useEffect(() => {
-    setTiles(null);
-    loadTiles();
-  }, [loadTiles]);
+      .then((r) => done(r.tiles))
+      .catch(() => done([]));
+    return () => {
+      cancelled = true;
+    };
+  }, [activePageId, canEdit]);
 
   // Poll service statuses.
   useEffect(() => {
@@ -320,6 +330,7 @@ export function GridCanvas() {
           <div className="empty" style={{ marginTop: 140 }}>Nothing here yet.</div>
         )}
 
+        <div className="page-view" key={pageKey}>
         {isMobile ? (
           <div className="stack">
             {[...tiles]
@@ -401,6 +412,7 @@ export function GridCanvas() {
             })}
           </ResponsiveGrid>
         )}
+        </div>
 
         {canEdit && (
           <div className="palette-fab">
