@@ -1739,13 +1739,25 @@ video.tile-media__el {
 .asset-card__meta { padding: 2px 9px 9px; font-size: 0.7rem; color: var(--text-faint); }
 
 /* ---------- Page (tab) switch transition ---------- */
-.page-view { animation: pageIn 0.34s var(--ease); }
+/* First paint eases in via the keyframe; subsequent tab switches fade out
+   (.page-view--out) then back in through the opacity/transform transition. */
+.page-view {
+  animation: pageIn 0.32s var(--ease) both;
+  transition: opacity 0.28s var(--ease), transform 0.28s var(--ease);
+  will-change: opacity, transform;
+}
+.page-view--out {
+  opacity: 0;
+  transform: translateY(8px);
+  transition-duration: 0.18s;
+}
 @keyframes pageIn {
   from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .page-view { animation: none; }
+  .page-view { animation: none; transition: none; }
+  .page-view--out { opacity: 1; transform: none; }
 }
 
 /* Embed */

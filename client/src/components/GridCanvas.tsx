@@ -183,28 +183,42 @@ export function GridCanvas() {
   }, [notify]);
 
   // ---- Tiles (for the active page + globals) -----------------------------
-  // Bumped after each successful load so the board can animate itself in.
-  const [pageKey, setPageKey] = useState(0);
+  // Drives the crossfade: 'out' = current board fading away, 'in' = settled.
+  const [phase, setPhase] = useState<'in' | 'out'>('in');
 
-  // Fetch the active page's tiles. We deliberately keep the previous page's
-  // tiles on screen until the new ones arrive (no blank spinner mid-switch),
-  // then bump `pageKey` so the board fades/rises in cleanly.
+  // Fetch the active page's tiles. The board fades out first; only once BOTH
+  // the fade-out and the fetch have finished do we swap the tiles (invisibly)
+  // and fade the new board back in — so a switch never blanks or pops.
   useEffect(() => {
     if (!activePageId) return;
     let cancelled = false;
     const base = canEdit ? '/tiles/all' : '/tiles';
-    const done = (next: Tile[]) => {
+    // First paint (nothing on screen yet) and reduced-motion users skip the
+    // fade-out and just settle in place.
+    const firstLoad = tiles === null;
+    const reduce =
+      typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const instant = firstLoad || reduce;
+    if (!instant) setPhase('out');
+
+    const fetchP = api
+      .get<{ tiles: Tile[] }>(`${base}?page=${activePageId}`)
+      .then((r) => r.tiles)
+      .catch(() => [] as Tile[]);
+    // Let the fade-out (0.18s) play out before swapping, so the content change
+    // happens while the board is fully transparent.
+    const waitP = new Promise<void>((res) => window.setTimeout(res, instant ? 0 : 190));
+
+    Promise.all([fetchP, waitP]).then(([next]) => {
       if (cancelled) return;
       setTiles(next);
-      setPageKey((k) => k + 1);
-    };
-    api
-      .get<{ tiles: Tile[] }>(`${base}?page=${activePageId}`)
-      .then((r) => done(r.tiles))
-      .catch(() => done([]));
+      setPhase('in');
+    });
     return () => {
       cancelled = true;
     };
+    // `tiles` is intentionally omitted — we only re-run on an actual switch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activePageId, canEdit]);
 
   // Poll service statuses.
@@ -330,7 +344,7 @@ export function GridCanvas() {
           <div className="empty" style={{ marginTop: 140 }}>Nothing here yet.</div>
         )}
 
-        <div className="page-view" key={pageKey}>
+        <div className={`page-view ${phase === 'out' ? 'page-view--out' : ''}`}>
         {isMobile ? (
           <div className="stack">
             {[...tiles]
