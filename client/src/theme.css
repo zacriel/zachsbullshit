@@ -1949,10 +1949,44 @@ video.tile-media__el {
   .golinks__main { flex-basis: 100%; }
 }
 
+/* ============================================================
+   PAGE TRANSITIONS
+   ============================================================ */
+/* Whole view fades in on load. Opacity only — the gradient background and the
+   header are position:fixed, and a transform here would reparent them. */
+@keyframes page-in { from { opacity: 0; } }
+#root { animation: page-in 0.42s var(--ease); }
+
+/* Fade the view out just before a full-page navigation (site <-> admin).
+   main.tsx adds .is-leaving on internal link clicks, then navigates. */
+body { transition: opacity 0.26s var(--ease); }
+body.is-leaving { opacity: 0; }
+
+/* Admin tab panels fade in each time you switch tabs (keyed remount). */
+@keyframes panel-in { from { opacity: 0; transform: translateY(6px); } }
+.tab-panel { animation: panel-in 0.32s var(--ease) both; }
+
+/* Dashboard tiles fade in with a gentle stagger. Grid tiles animate opacity
+   only (react-grid-layout drives their positioning transform); the mobile
+   stack is normal flow, so it can also drift up a touch. */
+@keyframes tile-in { from { opacity: 0; } }
+@keyframes tile-in-stack { from { opacity: 0; transform: translateY(8px); } }
+.grid-item { animation: tile-in 0.4s var(--ease) both; }
+.stack-item { animation: tile-in-stack 0.4s var(--ease) both; }
+.grid-item:nth-child(2),  .stack-item:nth-child(2)  { animation-delay: 0.04s; }
+.grid-item:nth-child(3),  .stack-item:nth-child(3)  { animation-delay: 0.08s; }
+.grid-item:nth-child(4),  .stack-item:nth-child(4)  { animation-delay: 0.12s; }
+.grid-item:nth-child(5),  .stack-item:nth-child(5)  { animation-delay: 0.16s; }
+.grid-item:nth-child(6),  .stack-item:nth-child(6)  { animation-delay: 0.20s; }
+.grid-item:nth-child(7),  .stack-item:nth-child(7)  { animation-delay: 0.24s; }
+.grid-item:nth-child(8),  .stack-item:nth-child(8)  { animation-delay: 0.28s; }
+.grid-item:nth-child(n+9), .stack-item:nth-child(n+9) { animation-delay: 0.3s; }
+
 @media (prefers-reduced-motion: reduce) {
   .gradient-bg, .gradient-bg::after, .jumbo h1, .jumbo__scroll, .edit-banner__dot {
     animation: none !important;
   }
+  #root, .tab-panel, .grid-item, .stack-item { animation: none !important; }
   html { scroll-behavior: auto; }
   * { transition-duration: 0.01ms !important; }
 }

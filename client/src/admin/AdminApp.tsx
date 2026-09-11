@@ -123,7 +123,13 @@ export function AdminApp() {
         ))}
       </div>
 
-      {current ? current.render(notify) : <div className="empty">No admin modules enabled.</div>}
+      {current ? (
+        <div className="tab-panel" key={active}>
+          {current.render(notify)}
+        </div>
+      ) : (
+        <div className="empty">No admin modules enabled.</div>
+      )}
 
       {toast && <div className={`toast ${toast.err ? 'toast--error' : ''}`}>{toast.msg}</div>}
     </div>
