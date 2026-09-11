@@ -66,36 +66,20 @@ function parseHistory(raw?: string | null): Sample[] {
 
 const STATE_COLOR: Record<string, string> = { up: 'var(--up)', degraded: 'var(--degraded)', down: 'var(--down)' };
 
-/** A latency sparkline + a status bar drawn from a service's check history. */
-function StatusHistory({ samples, line }: { samples: Sample[]; line: boolean }) {
+/** A compact uptime indicator: one colored cell per recent status check. */
+function StatusHistory({ samples }: { samples: Sample[] }) {
   if (samples.length < 2) return null;
   const recent = samples.slice(-40);
-  const lats = recent.map((s) => (s.s === 'down' ? null : s.l));
-  const nums = lats.filter((v): v is number => v != null);
-  const max = Math.max(1, ...nums);
-  const W = 100;
-  const H = 26;
-  const step = recent.length > 1 ? W / (recent.length - 1) : W;
-  const pts = recent
-    .map((s, i) => {
-      const v = s.s === 'down' ? 0 : s.l ?? 0;
-      const y = H - 3 - (v / max) * (H - 6);
-      return `${(i * step).toFixed(1)},${y.toFixed(1)}`;
-    })
-    .join(' ');
-
   return (
-    <div className="svc-hist">
-      {line && nums.length > 1 && (
-        <svg className="svc-spark" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden="true">
-          <polyline points={pts} fill="none" stroke="var(--accent-bright)" strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
-        </svg>
-      )}
-      <div className="svc-bar">
-        {recent.map((s, i) => (
-          <span key={i} className="svc-bar__cell" style={{ background: STATE_COLOR[s.s] || 'var(--down)' }} title={new Date(s.at).toLocaleString()} />
-        ))}
-      </div>
+    <div className="svc-bar" aria-label="uptime history">
+      {recent.map((s, i) => (
+        <span
+          key={i}
+          className="svc-bar__cell"
+          style={{ background: STATE_COLOR[s.s] || 'var(--down)' }}
+          title={`${s.s}${s.l != null ? ` · ${s.l} ms` : ''} · ${new Date(s.at).toLocaleString()}`}
+        />
+      ))}
     </div>
   );
 }
@@ -484,7 +468,7 @@ function ServiceTile({ tile, status }: { tile: Tile; status?: ServiceStatus }) {
         </div>
       )}
 
-      {c.sparkline !== false && <StatusHistory samples={parseHistory(status?.history)} line={!isMc} />}
+      {c.sparkline !== false && <StatusHistory samples={parseHistory(status?.history)} />}
 
       <div className="tile--service__actions">
         {isMc ? (

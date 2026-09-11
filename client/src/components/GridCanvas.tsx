@@ -387,7 +387,7 @@ export function GridCanvas() {
                 return (
                   <div
                     key={String(tile.id)}
-                    className={`stack-item ${wide ? 'stack-item--wide' : ''} ${!tile.enabled ? 'grid-item--hidden' : ''} ${bg ? 'grid-item--bg' : ''} ${tile.config.floating ? 'is-floating' : ''}`}
+                    className={`stack-item ${wide ? 'stack-item--wide' : ''} ${!tile.enabled ? 'grid-item--hidden' : ''} ${bg ? 'grid-item--bg' : ''} ${tile.config.floating ? 'is-floating' : ''} ${!canEdit && tile.config.hover_buttons ? 'tile-hover-btns' : ''}`}
                     style={bg && !vid ? ({ ['--tile-bg']: `url("${bg}")` } as CSSProperties) : undefined}
                   >
                     {bg && vid && <TileMedia src={bg!} audio={!!tile.config.bg_audio} />}
@@ -445,7 +445,7 @@ export function GridCanvas() {
               return (
                 <div
                   key={String(tile.id)}
-                  className={`grid-item ${!tile.enabled ? 'grid-item--hidden' : ''} ${bg ? 'grid-item--bg' : ''} ${tile.config.floating ? 'is-floating' : ''} ${fxSpot ? 'fx-spotlight' : ''} ${fxTilt ? 'fx-tilt' : ''}`}
+                  className={`grid-item ${!tile.enabled ? 'grid-item--hidden' : ''} ${bg ? 'grid-item--bg' : ''} ${tile.config.floating ? 'is-floating' : ''} ${fxSpot ? 'fx-spotlight' : ''} ${fxTilt ? 'fx-tilt' : ''} ${!canEdit && tile.config.hover_buttons ? 'tile-hover-btns' : ''}`}
                   style={bg && !vid ? ({ ['--tile-bg']: `url("${bg}")` } as CSSProperties) : undefined}
                   onMouseMove={fxSpot || fxTilt ? (e) => fxMove(e, fxSpot, fxTilt) : undefined}
                   onMouseLeave={fxTilt ? fxLeave : undefined}

@@ -177,7 +177,7 @@ export function TileEditor({
                 )}
                 <Toggle label="Show icon" checked={!config.hideIcon} onChange={(v) => set('hideIcon', !v)} />
                 {!config.hideIcon && <Field wide label="Icon"><IconPicker value={config.icon || ''} onChange={(v) => set('icon', v)} /></Field>}
-                <Toggle label="Show status-history sparkline" checked={config.sparkline !== false} onChange={(v) => set('sparkline', v)} />
+                <Toggle label="Show uptime indicator" checked={config.sparkline !== false} onChange={(v) => set('sparkline', v)} />
               </>
             )}
 
@@ -363,6 +363,7 @@ export function TileEditor({
                 <FxSelect label="Hover tilt" value={config.fx_tilt} onChange={(v) => set('fx_tilt', v)} />
               </div>
               <Toggle label="Click-to-expand into a lightbox" checked={!!config.expand} onChange={(v) => set('expand', v)} />
+              <Toggle label="Reveal action buttons only on hover" checked={!!config.hover_buttons} onChange={(v) => set('hover_buttons', v)} />
             </div>
 
             <Field label="Width (1–12 cols)">

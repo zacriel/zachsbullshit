@@ -1738,11 +1738,35 @@ video.tile-media__el {
 }
 .asset-card__meta { padding: 2px 9px 9px; font-size: 0.7rem; color: var(--text-faint); }
 
-/* ---------- Service status history (sparkline + bar) ---------- */
-.svc-hist { display: flex; flex-direction: column; gap: 5px; margin-top: 2px; }
-.svc-spark { width: 100%; height: 26px; display: block; }
-.svc-bar { display: flex; gap: 2px; height: 8px; }
+/* ---------- Service uptime indicator ---------- */
+.svc-bar { display: flex; gap: 2px; height: 8px; margin-top: 2px; }
 .svc-bar__cell { flex: 1; border-radius: 2px; min-width: 2px; opacity: 0.85; }
+
+/* ---------- Reveal action buttons on hover (per-tile) ---------- */
+.tile-hover-btns .tile--service__actions,
+.tile-hover-btns .tile--download__foot,
+.tile-hover-btns .carousel__controls,
+.tile-hover-btns .tile--command__row .btn,
+.tile-hover-btns .project-card__links {
+  opacity: 0;
+  transform: translateY(5px);
+  pointer-events: none;
+  transition: opacity 0.2s var(--ease), transform 0.2s var(--ease);
+}
+.tile-hover-btns:hover .tile--service__actions,
+.tile-hover-btns:focus-within .tile--service__actions,
+.tile-hover-btns:hover .tile--download__foot,
+.tile-hover-btns:focus-within .tile--download__foot,
+.tile-hover-btns:hover .carousel__controls,
+.tile-hover-btns:focus-within .carousel__controls,
+.tile-hover-btns:hover .tile--command__row .btn,
+.tile-hover-btns:focus-within .tile--command__row .btn,
+.tile-hover-btns:hover .project-card__links,
+.tile-hover-btns:focus-within .project-card__links {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
 
 /* ---------- Uptime monitor tile ---------- */
 .tile--uptime {
