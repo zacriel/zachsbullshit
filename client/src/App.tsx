@@ -5,6 +5,8 @@ import { Footer } from './components/Footer';
 import { Icon } from './components/Icon';
 import { LoginModal } from './components/LoginModal';
 import { GridCanvas } from './components/GridCanvas';
+import { BackgroundFX } from './components/BackgroundFX';
+import { BootSequence } from './components/BootSequence';
 import { AdminApp } from './admin/AdminApp';
 
 const BRAND = 'zachsbullshit';
@@ -16,22 +18,14 @@ export default function App() {
   return <PublicSite />;
 }
 
-function GradientGround() {
-  return (
-    <>
-      <div className="gradient-bg" aria-hidden="true" />
-      <div className="gradient-veil" aria-hidden="true" />
-    </>
-  );
-}
-
 function PublicSite() {
   const { editMode, toast, setEditMode } = useAuth();
   const [showLogin, setShowLogin] = useState(false);
 
   return (
     <>
-      <GradientGround />
+      <BackgroundFX />
+      <BootSequence />
       <div className="app">
         <Header brand={BRAND} />
 

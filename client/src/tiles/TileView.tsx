@@ -1,9 +1,11 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { api, ApiError, trackClick } from '../api';
 import { useAuth } from '../auth/AuthContext';
 import { Icon } from '../components/Icon';
 import { TileMedia } from './media';
 import { usePages } from './PagesContext';
+import { useAppearance, resolveFx } from '../appearance/AppearanceContext';
+import { useScramble } from '../fx/scramble';
 import type { ServiceStatus, Tile } from '../types';
 
 /** Renders a single tile in view (non-editing) mode by its type. */
@@ -39,9 +41,182 @@ export function TileView({ tile, status }: { tile: Tile; status?: ServiceStatus 
       return <RssTile tile={tile} />;
     case 'tabs':
       return <TabsTile tile={tile} />;
+    case 'carousel':
+      return <CarouselTile tile={tile} />;
+    case 'uptime':
+      return <UptimeTile tile={tile} />;
+    case 'qr':
+      return <QrTile tile={tile} />;
     default:
       return null;
   }
+}
+
+interface Sample { s: 'up' | 'degraded' | 'down'; l: number | null; at: string }
+
+function parseHistory(raw?: string | null): Sample[] {
+  if (!raw) return [];
+  try {
+    const a = JSON.parse(raw);
+    return Array.isArray(a) ? a : [];
+  } catch {
+    return [];
+  }
+}
+
+const STATE_COLOR: Record<string, string> = { up: 'var(--up)', degraded: 'var(--degraded)', down: 'var(--down)' };
+
+/** A latency sparkline + a status bar drawn from a service's check history. */
+function StatusHistory({ samples, line }: { samples: Sample[]; line: boolean }) {
+  if (samples.length < 2) return null;
+  const recent = samples.slice(-40);
+  const lats = recent.map((s) => (s.s === 'down' ? null : s.l));
+  const nums = lats.filter((v): v is number => v != null);
+  const max = Math.max(1, ...nums);
+  const W = 100;
+  const H = 26;
+  const step = recent.length > 1 ? W / (recent.length - 1) : W;
+  const pts = recent
+    .map((s, i) => {
+      const v = s.s === 'down' ? 0 : s.l ?? 0;
+      const y = H - 3 - (v / max) * (H - 6);
+      return `${(i * step).toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(' ');
+
+  return (
+    <div className="svc-hist">
+      {line && nums.length > 1 && (
+        <svg className="svc-spark" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden="true">
+          <polyline points={pts} fill="none" stroke="var(--accent-bright)" strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
+        </svg>
+      )}
+      <div className="svc-bar">
+        {recent.map((s, i) => (
+          <span key={i} className="svc-bar__cell" style={{ background: STATE_COLOR[s.s] || 'var(--down)' }} title={new Date(s.at).toLocaleString()} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * A 3D image carousel: photos arranged around a rotating ring you can drag to
+ * spin, with optional auto-rotation, prev/next controls, and a floor
+ * reflection. Built entirely with CSS 3D transforms — no library.
+ */
+function CarouselTile({ tile }: { tile: Tile }) {
+  const c = tile.config;
+  const images: string[] = (Array.isArray(c.images) ? c.images : []).filter(Boolean);
+  const n = images.length;
+  const theta = n > 0 ? 360 / n : 0;
+
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [box, setBox] = useState({ w: 320, h: 220 });
+  const [rot, setRot] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const drag = useRef<{ x: number; rot: number; moved: boolean } | null>(null);
+
+  const autoplay = c.autoplay !== false && n > 1;
+  const interval = Math.max(2, Number(c.interval) || 4);
+
+  // Track the container size so the ring radius stays proportional.
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const measure = () => setBox({ w: el.clientWidth, h: el.clientHeight });
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const itemW = Math.max(120, Math.min(box.w * 0.5, box.h * 1.2, 320));
+  const itemH = Math.round(itemW * 0.64);
+  const radius = n > 1 ? Math.round(itemW / 2 / Math.tan(Math.PI / n)) : 0;
+  const snap = (r: number) => (theta ? Math.round(r / theta) * theta : r);
+
+  // Auto-rotate (paused while dragging).
+  useEffect(() => {
+    if (!autoplay || dragging) return;
+    const t = window.setInterval(() => setRot((r) => r - theta), interval * 1000);
+    return () => window.clearInterval(t);
+  }, [autoplay, dragging, theta, interval]);
+
+  function onDown(e: ReactPointerEvent<HTMLDivElement>) {
+    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+    drag.current = { x: e.clientX, rot, moved: false };
+    setDragging(true);
+  }
+  function onMove(e: ReactPointerEvent<HTMLDivElement>) {
+    if (!drag.current) return;
+    const dx = e.clientX - drag.current.x;
+    if (Math.abs(dx) > 3) drag.current.moved = true;
+    setRot(drag.current.rot + (dx / Math.max(1, box.w)) * 180);
+  }
+  function onUp() {
+    if (!drag.current) return;
+    drag.current = null;
+    setDragging(false);
+    setRot((r) => snap(r));
+  }
+
+  if (n === 0) {
+    return (
+      <div className="tile tile--carousel tile--carousel--empty">
+        <span className="admin-row__muted"><Icon name="images" /> Add images in the editor.</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`tile tile--carousel ${c.reflection ? 'tile--carousel--reflect' : ''}`}>
+      <div
+        className="carousel"
+        ref={wrapRef}
+        onPointerDown={onDown}
+        onPointerMove={onMove}
+        onPointerUp={onUp}
+        onPointerCancel={onUp}
+      >
+        <div
+          className={`carousel__ring ${dragging ? 'carousel__ring--dragging' : ''}`}
+          style={{ transform: `translateZ(${-radius}px) rotateY(${rot}deg)` }}
+        >
+          {images.map((src, i) => {
+            const a = (((i * theta + rot) % 360) + 360) % 360;
+            const face = 0.5 + 0.5 * Math.cos((a * Math.PI) / 180); // 1 = front, 0 = back
+            return (
+              <div
+                key={i}
+                className="carousel__cell"
+                style={{
+                  width: itemW,
+                  height: itemH,
+                  marginLeft: -itemW / 2,
+                  marginTop: -itemH / 2,
+                  transform: `rotateY(${i * theta}deg) translateZ(${radius}px)`,
+                  opacity: 0.28 + 0.72 * face,
+                }}
+              >
+                <img src={src} alt="" draggable={false} />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      {n > 1 && (
+        <div className="carousel__controls">
+          <button className="carousel__btn" onClick={() => setRot((r) => snap(r) + theta)} aria-label="Previous">
+            <Icon name="chevron-left" />
+          </button>
+          <button className="carousel__btn" onClick={() => setRot((r) => snap(r) - theta)} aria-label="Next">
+            <Icon name="chevron-right" />
+          </button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 /** Build a favicon URL for a link's destination host (Google's S2 service). */
@@ -142,6 +317,8 @@ function TabsTile({ tile }: { tile: Tile }) {
 
 function BannerTile({ tile }: { tile: Tile }) {
   const c = tile.config;
+  const { appearance } = useAppearance();
+  const title = useScramble(c.title || '', resolveFx(c.scramble, appearance.scramble));
   const align = c.align === 'left' ? 'flex-start' : c.align === 'right' ? 'flex-end' : 'center';
   return (
     <div
@@ -158,7 +335,7 @@ function BannerTile({ tile }: { tile: Tile }) {
       )}
       <div className="tile--banner__scrim" />
       <div className="tile--banner__content">
-        <h1 className="tile--banner__title">{c.title || ''}</h1>
+        <h1 className="tile--banner__title">{title}</h1>
         {c.subtitle && <p className="tile--banner__subtitle">{c.subtitle}</p>}
       </div>
     </div>
@@ -167,11 +344,13 @@ function BannerTile({ tile }: { tile: Tile }) {
 
 function HeadingTile({ tile }: { tile: Tile }) {
   const c = tile.config;
+  const { appearance } = useAppearance();
+  const text = useScramble(c.text || '', resolveFx(c.scramble, appearance.scramble));
   return (
     <div className="tile tile--heading">
       <h2 style={{ fontSize: c.level === 1 ? '2rem' : '1.5rem' }}>
         {c.icon && <Icon name={c.icon} className="tile--heading__icon" />}
-        {c.text || ''}
+        {text}
       </h2>
       <span className="tile--heading__rule" />
     </div>
@@ -304,6 +483,8 @@ function ServiceTile({ tile, status }: { tile: Tile; status?: ServiceStatus }) {
           {status.code && <span>HTTP {status.code}</span>}
         </div>
       )}
+
+      {c.sparkline !== false && <StatusHistory samples={parseHistory(status?.history)} line={!isMc} />}
 
       <div className="tile--service__actions">
         {isMc ? (
@@ -752,6 +933,111 @@ function RssTile({ tile }: { tile: Tile }) {
             </li>
           ))}
         </ul>
+      )}
+    </div>
+  );
+}
+
+/** Uptime heatmap for a chosen service tile, drawn from its check history. */
+function UptimeTile({ tile }: { tile: Tile }) {
+  const c = tile.config;
+  const svcId = Number(c.service_tile_id) || 0;
+  const [samples, setSamples] = useState<Sample[]>([]);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!svcId) return;
+    const load = () =>
+      api
+        .get<{ statuses: Record<number, { history?: string | null }> }>('/tiles/status')
+        .then((r) => {
+          setSamples(parseHistory(r.statuses[svcId]?.history));
+          setLoaded(true);
+        })
+        .catch(() => setLoaded(true));
+    load();
+    const t = window.setInterval(load, 30_000);
+    return () => window.clearInterval(t);
+  }, [svcId]);
+
+  const upCount = samples.filter((s) => s.s === 'up').length;
+  const pct = samples.length ? Math.round((upCount / samples.length) * 100) : null;
+
+  return (
+    <div className="tile tile--uptime">
+      <div className="tile--uptime__head">
+        <span className="tile--uptime__label"><Icon name="wave-square" /> {c.label || 'Uptime'}</span>
+        {pct != null && <span className={`tile--uptime__pct ${pct >= 99 ? 'is-good' : pct >= 90 ? 'is-mid' : 'is-bad'}`}>{pct}%</span>}
+      </div>
+      {!svcId ? (
+        <div className="admin-row__muted">Pick a service in the editor.</div>
+      ) : !loaded ? (
+        <div className="admin-row__muted">…</div>
+      ) : samples.length === 0 ? (
+        <div className="admin-row__muted">No history yet — checks build over time.</div>
+      ) : (
+        <div className="uptime-grid">
+          {samples.map((s, i) => (
+            <span
+              key={i}
+              className="uptime-grid__cell"
+              style={{ background: STATE_COLOR[s.s] || 'var(--down)' }}
+              title={`${s.s}${s.l != null ? ` · ${s.l} ms` : ''} · ${new Date(s.at).toLocaleString()}`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** A scannable QR code for any URL, generated client-side. */
+function QrTile({ tile }: { tile: Tile }) {
+  const { notify } = useAuth();
+  const c = tile.config;
+  const url: string = c.url || '';
+  const [svg, setSvg] = useState('');
+
+  useEffect(() => {
+    let alive = true;
+    if (!url) {
+      setSvg('');
+      return;
+    }
+    import('qrcode').then((QR) => {
+      QR.toString(url, { type: 'svg', margin: 1, errorCorrectionLevel: 'M', color: { dark: '#0e0e13', light: '#ffffff' } })
+        .then((s: string) => {
+          if (alive) setSvg(s);
+        })
+        .catch(() => {});
+    });
+    return () => {
+      alive = false;
+    };
+  }, [url]);
+
+  return (
+    <div className="tile tile--qr">
+      {c.label && <div className="tile--qr__label">{c.label}</div>}
+      {url ? (
+        <>
+          <div
+            className="tile--qr__code"
+            role="img"
+            aria-label={`QR code for ${url}`}
+            dangerouslySetInnerHTML={{ __html: svg }}
+            onClick={() =>
+              navigator.clipboard.writeText(url).then(
+                () => notify('Link copied'),
+                () => notify('Copy failed', true),
+              )
+            }
+            title="Click to copy the link"
+          />
+          {c.caption !== false && <div className="tile--qr__caption">{c.caption || url}</div>}
+        </>
+      ) : (
+        <div className="empty" style={{ margin: 0 }}>Set a URL in the editor.</div>
       )}
     </div>
   );

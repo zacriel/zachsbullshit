@@ -8,6 +8,7 @@ import { AnalyticsAdmin } from './AnalyticsAdmin';
 import { SystemAdmin } from './SystemAdmin';
 import { FilesAdmin } from './FilesAdmin';
 import { GoLinksAdmin } from './GoLinksAdmin';
+import { AppearanceAdmin } from './AppearanceAdmin';
 import type { ModuleManifestEntry } from '../types';
 
 type NotifyFn = (message: string, isError?: boolean) => void;
@@ -30,6 +31,7 @@ const TAB_DEFS: TabDef[] = [
 
 // Always available (not tied to a toggleable module).
 const ALWAYS_TABS: TabDef[] = [
+  { id: 'appearance', label: 'Appearance', icon: 'palette', render: (n) => <AppearanceAdmin notify={n} /> },
   { id: 'golinks', label: 'Go links', icon: 'link', render: (n) => <GoLinksAdmin notify={n} /> },
   { id: 'files', label: 'Files', icon: 'folder-open', render: (n) => <FilesAdmin notify={n} /> },
   { id: 'system', label: 'System', icon: 'server', render: (n) => <SystemAdmin notify={n} /> },

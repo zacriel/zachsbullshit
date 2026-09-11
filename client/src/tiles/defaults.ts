@@ -33,6 +33,27 @@ export const TILE_DEFAULTS: Record<
     w: 12,
     h: 1,
   },
+  carousel: {
+    label: '3D carousel',
+    icon: 'images',
+    config: { images: [], autoplay: true, interval: 4, reflection: true },
+    w: 6,
+    h: 5,
+  },
+  uptime: {
+    label: 'Uptime monitor',
+    icon: 'wave-square',
+    config: { label: 'Uptime', service_tile_id: null },
+    w: 6,
+    h: 2,
+  },
+  qr: {
+    label: 'QR code',
+    icon: 'qrcode',
+    config: { url: 'https://zachsbullshit.com', label: '', caption: true },
+    w: 3,
+    h: 4,
+  },
   service: {
     label: 'Service / Minecraft',
     icon: 'heart-pulse',
@@ -113,6 +134,6 @@ export const TILE_DEFAULTS: Record<
 };
 
 export const PALETTE: TileType[] = [
-  'tabs', 'banner', 'heading', 'link', 'icons', 'service', 'project',
-  'text', 'contact', 'download', 'embed', 'command', 'clock', 'weather', 'rss',
+  'tabs', 'banner', 'carousel', 'heading', 'link', 'icons', 'service', 'project',
+  'text', 'contact', 'download', 'embed', 'command', 'clock', 'weather', 'rss', 'uptime', 'qr',
 ];

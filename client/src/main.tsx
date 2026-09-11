@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
 import { AuthProvider } from './auth/AuthContext';
+import { AppearanceProvider } from './appearance/AppearanceContext';
 import './icons'; // registers the FontAwesome library once
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
@@ -39,7 +40,9 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AuthProvider>
-      <App />
+      <AppearanceProvider>
+        <App />
+      </AppearanceProvider>
     </AuthProvider>
   </StrictMode>,
 );

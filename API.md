@@ -62,7 +62,10 @@ The primary content system: a grid of tiles, each with a `type`, a JSON
 `embed` (allow-listed
 iframe: YouTube/Vimeo/Maps/CodePen/Spotify…), `command` (copy-to-clipboard
 snippet), `clock` (live clock or countdown), `weather` (Open-Meteo), `rss`
-(RSS/Atom feed), `tabs` (page navigation — see **Pages** below). A download
+(RSS/Atom feed), `carousel` (drag-to-spin 3D image ring with autoplay +
+reflection), `uptime` (up/down history heatmap for a chosen service tile),
+`qr` (client-generated QR code for any URL), `tabs` (page navigation — see
+**Pages** below). A download
 tile's `password` is write-only — hashed with bcrypt
 into `download_secrets`, never returned; the file lives outside the public
 `/uploads` dir and is reachable only through the gated route below. `link` tiles
@@ -80,6 +83,7 @@ managed inline from the tabs tile in edit mode.
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
+| `GET` | `/api/tiles/services` | ✅ | Every service tile across all pages `{ services: [{ id, name }] }`, for the uptime tile's picker. |
 | `GET` | `/api/tiles/pages` | — | Ordered list of pages: `{ pages: [{ id, name, slug, sort_order }] }`. |
 | `POST` | `/api/tiles/pages` | ✅ | Create a page `{ name }` (slug auto-generated, unique). |
 | `PUT` | `/api/tiles/pages/reorder` | ✅ | Reorder pages: `{ ids: [...] }`. |
@@ -117,6 +121,23 @@ Railway volume).
 HTTP probe (up/degraded/down + latency + code); `kind: "minecraft"` does a
 native Server List Ping over TCP (`host`, optional `port`, SRV-aware) and
 returns online/offline + player count + MOTD + version — no third-party service.
+Each check appends to a rolling 48-sample `history` (returned in `/api/tiles/status`)
+that powers the service sparkline and the `uptime` tile.
+
+**Per-tile effects.** Every tile's `config` may carry interactivity overrides,
+each resolving against the site-wide master default (see Appearance below):
+`fx_spotlight` / `fx_tilt` (`"on"` | `"off"` | anything = default), `expand`
+(bool — click-to-expand lightbox), and, on headings/banners, `scramble`
+(`"on"`/`"off"`/default text-scramble reveal). Service tiles honour
+`sparkline` (default on).
+
+### Appearance
+
+Global look & interactivity live in the public `appearance` setting
+(`GET/PUT /api/settings/appearance`), edited from the admin **Appearance** page:
+`background` (`gradient` | `aurora` | `particles` | `off`), `accent` (hue 0–360
+or null), master toggles `spotlight` / `tilt` / `scramble` / `expand`, and
+`boot` (`{ enabled, once, title }`) for the boot-sequence intro.
 
 ---
 
@@ -129,7 +150,7 @@ Always present (not part of any toggleable module).
 | `GET` | `/api/healthz` | — | Liveness probe. `{ ok, ts }`. Used by Railway. |
 | `GET` | `/api/modules` | — | Manifest of enabled modules: `{ modules: [{ id, name, icon, public }] }`. Drives the frontend. |
 | `GET` | `/api/system` | ✅ | Admin diagnostics: database internals (size, WAL, pages, journal mode, per-table row counts), volume/disk usage, uploads + protected-file totals, and runtime info. Powers the admin **System** page. |
-| `GET` | `/api/settings/:key` | — | Reads an allow-listed public setting (currently `header_icons`, the header's social-icon row). `{ key, value }`. |
+| `GET` | `/api/settings/:key` | — | Reads an allow-listed public setting (`header_icons`, the header's social-icon row; `appearance`, the site look & effects). `{ key, value }`. |
 | `PUT` | `/api/settings/:key` | ✅ | Writes a setting `{ value }` (JSON). Used by the header icon editor. |
 | `GET` | `/api/files` | ✅ | Lists every file on the volume (media + protected downloads) with size, type, date, and whether it's referenced by a tile. Powers the admin **Files** page. |
 | `GET` | `/api/files/protected/:name` | ✅ | Admin download of a protected file (bypasses the per-tile password gate). |

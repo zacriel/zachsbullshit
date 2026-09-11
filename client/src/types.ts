@@ -20,7 +20,10 @@ export type TileType =
   | 'clock'
   | 'weather'
   | 'rss'
-  | 'tabs';
+  | 'tabs'
+  | 'carousel'
+  | 'uptime'
+  | 'qr';
 
 export interface Tile {
   id: number;
@@ -51,6 +54,12 @@ export interface ShortLink {
   created_at: string;
 }
 
+export interface StatusSample {
+  s: 'up' | 'degraded' | 'down';
+  l: number | null;
+  at: string;
+}
+
 export interface ServiceStatus {
   status: 'up' | 'degraded' | 'down' | null;
   code: number | null;
@@ -59,6 +68,7 @@ export interface ServiceStatus {
   players_max: number | null;
   motd: string | null;
   version: string | null;
+  history: string | null;
   checked_at: string | null;
 }
 

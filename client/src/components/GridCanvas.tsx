@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react';
 import { Responsive, WidthProvider, type Layout } from 'react-grid-layout';
 import { api } from '../api';
 import { useAuth } from '../auth/AuthContext';
+import { useAppearance, resolveFx } from '../appearance/AppearanceContext';
 import { Icon } from './Icon';
 import { TileView } from '../tiles/TileView';
 import { TileEditor } from '../tiles/TileEditor';
@@ -10,12 +11,33 @@ import { PALETTE, TILE_DEFAULTS } from '../tiles/defaults';
 import { PagesContext, type PagesCtx } from '../tiles/PagesContext';
 import type { Page, ServiceStatus, Tile, TileType } from '../types';
 
+/** Cursor spotlight + hover-tilt: write CSS vars imperatively (no re-render). */
+function fxMove(e: ReactMouseEvent<HTMLDivElement>, spot: boolean, tilt: boolean) {
+  const el = e.currentTarget;
+  const r = el.getBoundingClientRect();
+  const px = e.clientX - r.left;
+  const py = e.clientY - r.top;
+  if (spot) {
+    el.style.setProperty('--sx', `${px}px`);
+    el.style.setProperty('--sy', `${py}px`);
+  }
+  if (tilt) {
+    el.style.setProperty('--rx', `${(py / r.height - 0.5) * -7}deg`);
+    el.style.setProperty('--ry', `${(px / r.width - 0.5) * 7}deg`);
+  }
+}
+function fxLeave(e: ReactMouseEvent<HTMLDivElement>) {
+  const el = e.currentTarget;
+  el.style.setProperty('--rx', '0deg');
+  el.style.setProperty('--ry', '0deg');
+}
+
 const ResponsiveGrid = WidthProvider(Responsive);
 const COLS = 12;
 const ROW_H = 92;
 
 // Tile types that take the full row in the mobile 2-column layout.
-const MOBILE_WIDE = new Set<string>(['banner', 'heading', 'embed', 'contact', 'rss', 'project', 'text', 'tabs']);
+const MOBILE_WIDE = new Set<string>(['banner', 'heading', 'embed', 'contact', 'rss', 'project', 'text', 'tabs', 'carousel', 'uptime']);
 
 /** Read the active-page slug from the URL hash (#p=<slug>), if present. */
 function readHashSlug(): string | null {
@@ -59,6 +81,12 @@ function tileMins(t: Tile): { minW: number; minH: number } {
       return { minW: 2, minH: 2 };
     case 'tabs':
       return { minW: 2, minH: 1 };
+    case 'carousel':
+      return { minW: 4, minH: 4 };
+    case 'uptime':
+      return { minW: 3, minH: 2 };
+    case 'qr':
+      return { minW: 2, minH: 3 };
     default:
       return { minW: 1, minH: 1 };
   }
@@ -72,6 +100,7 @@ function tileMins(t: Tile): { minW: number; minH: number } {
  */
 export function GridCanvas() {
   const { authed, editMode, notify } = useAuth();
+  const { appearance } = useAppearance();
   const canEdit = !!authed && editMode;
 
   const [pages, setPages] = useState<Page[]>([]);
@@ -79,6 +108,7 @@ export function GridCanvas() {
   const [tiles, setTiles] = useState<Tile[] | null>(null);
   const [statuses, setStatuses] = useState<Record<number, ServiceStatus>>({});
   const [editing, setEditing] = useState<Tile | null>(null);
+  const [expanded, setExpanded] = useState<Tile | null>(null);
   const [showPalette, setShowPalette] = useState(false);
   // On phones we abandon the drag-grid for a clean natural-height stack.
   const [isMobile, setIsMobile] = useState(
@@ -362,6 +392,11 @@ export function GridCanvas() {
                   >
                     {bg && vid && <TileMedia src={bg!} audio={!!tile.config.bg_audio} />}
                     <TileView tile={tile} status={statuses[tile.id]} />
+                    {!canEdit && appearance.expand && tile.config.expand && (
+                      <button className="tile-expand" onClick={() => setExpanded(tile)} title="Expand">
+                        <Icon name="up-right-and-down-left-from-center" />
+                      </button>
+                    )}
                     {canEdit && (
                       <>
                         <div className="tile-actions">
@@ -387,8 +422,9 @@ export function GridCanvas() {
             containerPadding={[0, 0]}
             isDraggable={canEdit}
             isResizable={canEdit}
+            useCSSTransforms={false}
             resizeHandles={['s', 'e', 'se']}
-            draggableCancel=".tile-actions,.tile-actions *,.tabs__row,.tabs__row *,.tabs__admin,.tabs__admin *"
+            draggableCancel=".tile-actions,.tile-actions *,.tabs__row,.tabs__row *,.tabs__admin,.tabs__admin *,.tile-expand"
             compactType="vertical"
             onDragStop={(l) => persistLayout(l)}
             onResizeStop={(l) => persistLayout(l)}
@@ -401,14 +437,26 @@ export function GridCanvas() {
               // The tabs nav must stay clickable in edit mode, so it skips the
               // drag-cover overlay (it's marked draggableCancel instead).
               const cover = canEdit && tile.type !== 'tabs';
+              // Per-tile interactivity resolves the tile's override against the
+              // site-wide master toggle (disabled entirely while editing).
+              const fxSpot = !canEdit && resolveFx(tile.config.fx_spotlight, appearance.spotlight);
+              const fxTilt = !canEdit && resolveFx(tile.config.fx_tilt, appearance.tilt);
+              const fxExpand = !canEdit && appearance.expand && !!tile.config.expand;
               return (
                 <div
                   key={String(tile.id)}
-                  className={`grid-item ${!tile.enabled ? 'grid-item--hidden' : ''} ${bg ? 'grid-item--bg' : ''} ${tile.config.floating ? 'is-floating' : ''}`}
+                  className={`grid-item ${!tile.enabled ? 'grid-item--hidden' : ''} ${bg ? 'grid-item--bg' : ''} ${tile.config.floating ? 'is-floating' : ''} ${fxSpot ? 'fx-spotlight' : ''} ${fxTilt ? 'fx-tilt' : ''}`}
                   style={bg && !vid ? ({ ['--tile-bg']: `url("${bg}")` } as CSSProperties) : undefined}
+                  onMouseMove={fxSpot || fxTilt ? (e) => fxMove(e, fxSpot, fxTilt) : undefined}
+                  onMouseLeave={fxTilt ? fxLeave : undefined}
                 >
                   {bg && vid && <TileMedia src={bg!} audio={!!tile.config.bg_audio} />}
                   <TileView tile={tile} status={statuses[tile.id]} />
+                  {fxExpand && (
+                    <button className="tile-expand" onClick={() => setExpanded(tile)} title="Expand">
+                      <Icon name="up-right-and-down-left-from-center" />
+                    </button>
+                  )}
                   {canEdit && (
                     <>
                       {cover && <div className="tile-editcover" />}
@@ -448,6 +496,17 @@ export function GridCanvas() {
 
         {editing && (
           <TileEditor tile={editing} onSave={saveTile} onDelete={deleteTile} onClose={() => setEditing(null)} />
+        )}
+
+        {expanded && (
+          <div className="lightbox" onClick={() => setExpanded(null)}>
+            <button className="lightbox__close" onClick={() => setExpanded(null)} aria-label="Close">
+              <Icon name="xmark" />
+            </button>
+            <div className="lightbox__inner" onClick={(e) => e.stopPropagation()}>
+              <TileView tile={expanded} status={statuses[expanded.id]} />
+            </div>
+          </div>
         )}
       </div>
     </PagesContext.Provider>

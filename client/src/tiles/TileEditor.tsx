@@ -1,4 +1,4 @@
-import { useRef, useState, type ChangeEvent, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import { api, uploadImage, uploadFile } from '../api';
 import { useAuth } from '../auth/AuthContext';
 import { Icon } from '../components/Icon';
@@ -51,6 +51,13 @@ export function TileEditor({
                     <option value="right">Right</option>
                   </select>
                 </Field>
+                <Field label="Title-scramble reveal">
+                  <select className="input" value={config.scramble === 'on' ? 'on' : config.scramble === 'off' ? 'off' : 'default'} onChange={(e) => set('scramble', e.target.value)}>
+                    <option value="default">Site default</option>
+                    <option value="on">On</option>
+                    <option value="off">Off</option>
+                  </select>
+                </Field>
                 <ImageField wide label="Background image or video" value={config.image_url || ''} onChange={(v) => set('image_url', v)} notify={notify} />
                 <Toggle label="Parallax (background drifts as you scroll)" checked={!!config.parallax} onChange={(v) => set('parallax', v)} />
                 {isVideo(config.image_url) && (
@@ -88,6 +95,13 @@ export function TileEditor({
                   </select>
                 </Field>
                 <Field wide label="Icon (optional prefix)"><IconPicker value={config.icon || ''} onChange={(v) => set('icon', v)} /></Field>
+                <Field label="Text-scramble reveal">
+                  <select className="input" value={config.scramble === 'on' ? 'on' : config.scramble === 'off' ? 'off' : 'default'} onChange={(e) => set('scramble', e.target.value)}>
+                    <option value="default">Site default</option>
+                    <option value="on">On</option>
+                    <option value="off">Off</option>
+                  </select>
+                </Field>
               </>
             )}
 
@@ -103,6 +117,22 @@ export function TileEditor({
                     <Field wide label={config.favicon ? 'Fallback icon (if the favicon can’t load)' : 'Icon'}><IconPicker value={config.icon || ''} onChange={(v) => set('icon', v)} /></Field>
                   </>
                 )}
+              </>
+            )}
+
+            {tile.type === 'carousel' && (
+              <>
+                <ImageListField
+                  label="Carousel images"
+                  value={Array.isArray(config.images) ? config.images : []}
+                  onChange={(v) => set('images', v)}
+                  notify={notify}
+                />
+                <Toggle label="Auto-rotate" checked={config.autoplay !== false} onChange={(v) => set('autoplay', v)} />
+                <Field label="Seconds per turn">
+                  <input className="input" type="number" min={2} value={config.interval || 4} onChange={(e) => set('interval', Math.max(2, Number(e.target.value) || 4))} />
+                </Field>
+                <Toggle label="Floor reflection" checked={!!config.reflection} onChange={(v) => set('reflection', v)} />
               </>
             )}
 
@@ -147,6 +177,25 @@ export function TileEditor({
                 )}
                 <Toggle label="Show icon" checked={!config.hideIcon} onChange={(v) => set('hideIcon', !v)} />
                 {!config.hideIcon && <Field wide label="Icon"><IconPicker value={config.icon || ''} onChange={(v) => set('icon', v)} /></Field>}
+                <Toggle label="Show status-history sparkline" checked={config.sparkline !== false} onChange={(v) => set('sparkline', v)} />
+              </>
+            )}
+
+            {tile.type === 'uptime' && (
+              <>
+                <Field label="Label"><input className="input" value={config.label || ''} onChange={(e) => set('label', e.target.value)} /></Field>
+                <ServicePicker value={config.service_tile_id} onChange={(v) => set('service_tile_id', v)} />
+                <p className="span-2 admin-row__muted" style={{ fontSize: '0.85rem', margin: 0 }}>
+                  Shows the recent up/down history of the chosen service. History builds up as the poller runs.
+                </p>
+              </>
+            )}
+
+            {tile.type === 'qr' && (
+              <>
+                <Field wide label="URL"><input className="input" value={config.url || ''} onChange={(e) => set('url', e.target.value)} placeholder="https://…" /></Field>
+                <Field label="Label (optional)"><input className="input" value={config.label || ''} onChange={(e) => set('label', e.target.value)} /></Field>
+                <Toggle label="Show the URL caption under the code" checked={config.caption !== false} onChange={(v) => set('caption', v)} />
               </>
             )}
 
@@ -307,6 +356,15 @@ export function TileEditor({
 
             <Toggle label="Floating (no background, border, or shadow)" checked={!!config.floating} onChange={(v) => set('floating', v)} />
 
+            <div className="span-2 editor-fx">
+              <label className="editor-fx__label"><Icon name="wand-sparkles" /> Interactivity</label>
+              <div className="editor-fx__row">
+                <FxSelect label="Cursor spotlight" value={config.fx_spotlight} onChange={(v) => set('fx_spotlight', v)} />
+                <FxSelect label="Hover tilt" value={config.fx_tilt} onChange={(v) => set('fx_tilt', v)} />
+              </div>
+              <Toggle label="Click-to-expand into a lightbox" checked={!!config.expand} onChange={(v) => set('expand', v)} />
+            </div>
+
             <Field label="Width (1–12 cols)">
               <input type="number" className="input" min={1} max={12} value={w} onChange={(e) => setW(Math.max(1, Math.min(12, Number(e.target.value) || 1)))} />
             </Field>
@@ -339,6 +397,44 @@ function Field({ label, children, wide }: { label: string; children: ReactNode; 
       <label>{label}</label>
       {children}
     </div>
+  );
+}
+
+/** Dropdown of every service tile (across all pages) for the uptime tile. */
+function ServicePicker({ value, onChange }: { value: unknown; onChange: (v: number | null) => void }) {
+  const [services, setServices] = useState<{ id: number; name: string }[]>([]);
+  useEffect(() => {
+    api.get<{ services: { id: number; name: string }[] }>('/tiles/services').then((r) => setServices(r.services)).catch(() => {});
+  }, []);
+  return (
+    <div className="field">
+      <label>Service to monitor</label>
+      <select
+        className="input"
+        value={value != null ? String(value) : ''}
+        onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
+      >
+        <option value="">— pick a service —</option>
+        {services.map((s) => (
+          <option key={s.id} value={s.id}>{s.name} (#{s.id})</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+/** default / on / off override select for a per-tile effect. */
+function FxSelect({ label, value, onChange }: { label: string; value: unknown; onChange: (v: string) => void }) {
+  const v = value === 'on' || value === true ? 'on' : value === 'off' || value === false ? 'off' : 'default';
+  return (
+    <label className="fxsel">
+      <span>{label}</span>
+      <select className="input" value={v} onChange={(e) => onChange(e.target.value)}>
+        <option value="default">Site default</option>
+        <option value="on">On</option>
+        <option value="off">Off</option>
+      </select>
+    </label>
   );
 }
 
@@ -429,6 +525,7 @@ function ImageListField({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const [picking, setPicking] = useState(false);
   const setAt = (i: number, url: string) => onChange(value.map((v, j) => (j === i ? url : v)));
   const removeAt = (i: number) => onChange(value.filter((_, j) => j !== i));
 
@@ -459,11 +556,19 @@ function ImageListField({
       ))}
       <div style={{ display: 'flex', gap: 8 }}>
         <button type="button" className="btn btn--ghost btn--sm" onClick={() => onChange([...value, ''])}><Icon name="plus" /> Add URL</button>
+        <button type="button" className="btn btn--ghost btn--sm" onClick={() => setPicking(true)}><Icon name="images" /> Browse</button>
         <button type="button" className="btn btn--ghost btn--sm" onClick={() => inputRef.current?.click()} disabled={busy}>
           {busy ? <Icon name="spinner" spin /> : <Icon name="upload" />} Upload
         </button>
       </div>
       <input ref={inputRef} type="file" accept="image/*" hidden onChange={onFile} />
+      {picking && (
+        <AssetPicker
+          kind="media"
+          onPick={(a) => a.url && onChange([...value, a.url])}
+          onClose={() => setPicking(false)}
+        />
+      )}
     </div>
   );
 }

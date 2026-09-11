@@ -74,12 +74,27 @@ export async function checkServiceTile(db: Database.Database, tile: TileRow): Pr
     }
   }
 
+  // Append this check to a rolling history (last 48 samples) for sparklines
+  // and the uptime heatmap tile.
+  const prev = db.prepare('SELECT history FROM service_status WHERE tile_id = ?').get(tile.id) as
+    | { history?: string | null }
+    | undefined;
+  let hist: { s: string; l: number | null; at: string }[] = [];
+  try {
+    hist = prev?.history ? (JSON.parse(prev.history) as typeof hist) : [];
+  } catch {
+    hist = [];
+  }
+  hist.push({ s: status, l: latency, at: new Date().toISOString() });
+  if (hist.length > 48) hist = hist.slice(hist.length - 48);
+  const history = JSON.stringify(hist);
+
   db.prepare(
-    `INSERT INTO service_status (tile_id, status, code, latency_ms, players_online, players_max, motd, version, checked_at)
-     VALUES (@tile_id, @status, @code, @latency, @po, @pm, @motd, @version, datetime('now'))
+    `INSERT INTO service_status (tile_id, status, code, latency_ms, players_online, players_max, motd, version, history, checked_at)
+     VALUES (@tile_id, @status, @code, @latency, @po, @pm, @motd, @version, @history, datetime('now'))
      ON CONFLICT(tile_id) DO UPDATE SET
        status=@status, code=@code, latency_ms=@latency, players_online=@po,
-       players_max=@pm, motd=@motd, version=@version, checked_at=datetime('now')`,
+       players_max=@pm, motd=@motd, version=@version, history=@history, checked_at=datetime('now')`,
   ).run({
     tile_id: tile.id,
     status,
@@ -89,6 +104,7 @@ export async function checkServiceTile(db: Database.Database, tile: TileRow): Pr
     pm: playersMax,
     motd,
     version,
+    history,
   });
 }
 

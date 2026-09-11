@@ -21,7 +21,7 @@ const log = createLogger('tiles');
 
 const TILE_TYPES = [
   'link', 'banner', 'service', 'project', 'text', 'heading', 'contact',
-  'icons', 'download', 'embed', 'command', 'clock', 'weather', 'rss', 'tabs',
+  'icons', 'download', 'embed', 'command', 'clock', 'weather', 'rss', 'tabs', 'carousel', 'uptime', 'qr',
 ] as const;
 
 // "tabs" tiles are the page navigation. They're global (not owned by a single
@@ -59,6 +59,7 @@ interface StatusRow {
   players_max: number | null;
   motd: string | null;
   version: string | null;
+  history: string | null;
   checked_at: string;
 }
 
@@ -125,6 +126,7 @@ function migrate({ db }: ModuleContext): void {
       players_max    INTEGER,
       motd           TEXT,
       version        TEXT,
+      history        TEXT,
       checked_at     TEXT
     );
     CREATE TABLE IF NOT EXISTS download_secrets (
@@ -144,6 +146,11 @@ function migrate({ db }: ModuleContext): void {
   const cols = db.prepare('PRAGMA table_info(tiles)').all() as { name: string }[];
   if (!cols.some((c) => c.name === 'page_id')) {
     db.exec('ALTER TABLE tiles ADD COLUMN page_id INTEGER');
+  }
+  // Add the status-history column to pre-existing service_status tables.
+  const scols = db.prepare('PRAGMA table_info(service_status)').all() as { name: string }[];
+  if (scols.length && !scols.some((c) => c.name === 'history')) {
+    db.exec('ALTER TABLE service_status ADD COLUMN history TEXT');
   }
 
   // Ensure at least one page exists, then adopt any orphaned tiles onto it.
@@ -509,6 +516,21 @@ function register(ctx: ModuleContext): Router {
     });
     tx();
     res.json({ ok: true });
+  });
+
+  // Admin: every service tile across all pages, for the uptime tile picker.
+  router.get('/services', requireAuth, (_req, res) => {
+    const rows = db.prepare("SELECT id, config FROM tiles WHERE type = 'service' ORDER BY id").all() as { id: number; config: string }[];
+    const services = rows.map((r) => {
+      let name = 'Service';
+      try {
+        name = (JSON.parse(r.config).name as string) || name;
+      } catch {
+        /* ignore */
+      }
+      return { id: r.id, name };
+    });
+    res.json({ services });
   });
 
   // Public: enabled tiles for one page (+ globals like the tabs nav).

@@ -59,7 +59,7 @@ function main(): void {
 
   // Small key/value settings store. A few keys are readable by the public
   // (e.g. the header social icons); the rest require auth to read.
-  const PUBLIC_SETTINGS = new Set(['header_icons']);
+  const PUBLIC_SETTINGS = new Set(['header_icons', 'appearance']);
   app.get('/api/settings/:key', (req, res) => {
     const key = req.params.key;
     if (!PUBLIC_SETTINGS.has(key)) {
