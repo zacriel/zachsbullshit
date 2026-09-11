@@ -225,6 +225,8 @@ function serialize(row: TileRow, admin = false) {
   }
   // A download password is never returned to any client.
   delete config.password;
+  // Expose whether a file is attached (safe) without leaking the handle itself.
+  if (row.type === 'download') config.has_file = !!config.file;
   // The internal storage handle for a protected file is hidden from visitors.
   if (!admin && row.type === 'download') delete config.file;
   return { id: row.id, type: row.type, config, x: row.x, y: row.y, w: row.w, h: row.h, enabled: !!row.enabled, page_id: row.page_id };

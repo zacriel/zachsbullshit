@@ -1681,6 +1681,62 @@ video.tile-media__el {
 .tile--download__title { font-weight: 700; font-size: 1.05rem; display: flex; align-items: center; gap: 8px; }
 .tile--download__lock { color: var(--accent-bright); font-size: 0.85rem; }
 .tile--download__desc { margin: 0; color: var(--text-muted); font-size: 0.9rem; }
+/* Pin the password + button to the bottom so tiles of equal height line up
+   regardless of how long each description runs. */
+.tile--download__foot { margin-top: auto; display: flex; flex-direction: column; gap: 12px; }
+
+/* ---------- Asset picker (reuse existing uploads/files) ---------- */
+.asset-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(128px, 1fr));
+  gap: 12px;
+}
+.asset-card {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  padding: 0;
+  background: var(--surface-glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.15s var(--ease), transform 0.15s var(--ease);
+}
+.asset-card:hover { border-color: var(--accent-line); transform: translateY(-2px); }
+.asset-card__thumb {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-2, #14141b);
+  color: var(--text-faint);
+  font-size: 1.6rem;
+  overflow: hidden;
+}
+.asset-card__thumb img,
+.asset-card__thumb video { width: 100%; height: 100%; object-fit: cover; }
+.asset-card__badge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  font-size: 0.62rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  background: rgba(0, 0, 0, 0.6);
+  color: var(--accent-bright);
+  padding: 2px 6px;
+  border-radius: 999px;
+}
+.asset-card__name {
+  padding: 7px 9px 0;
+  font-size: 0.78rem;
+  line-height: 1.25;
+  word-break: break-all;
+  color: var(--text);
+}
+.asset-card__meta { padding: 2px 9px 9px; font-size: 0.7rem; color: var(--text-faint); }
 
 /* Embed */
 .tile--embed { padding: 0; overflow: hidden; background: var(--bg-2); border: 1px solid var(--border); }

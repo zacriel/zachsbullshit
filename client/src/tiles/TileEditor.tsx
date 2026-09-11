@@ -3,6 +3,7 @@ import { api, uploadImage, uploadFile } from '../api';
 import { useAuth } from '../auth/AuthContext';
 import { Icon } from '../components/Icon';
 import { IconPicker } from '../components/IconPicker';
+import { AssetPicker } from '../components/AssetPicker';
 import { isVideo } from './media';
 import type { Tile } from '../types';
 
@@ -366,6 +367,7 @@ function ImageField({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const [picking, setPicking] = useState(false);
 
   async function onFile(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -387,11 +389,21 @@ function ImageField({
     <div className={`field ${wide ? 'span-2' : ''}`}>
       <label>{label}</label>
       <div style={{ display: 'flex', gap: 8 }}>
-        <input className="input" value={value} onChange={(e) => onChange(e.target.value)} placeholder="https://…  or upload →" />
+        <input className="input" value={value} onChange={(e) => onChange(e.target.value)} placeholder="https://…  or upload / browse →" />
+        <button type="button" className="btn btn--ghost" onClick={() => setPicking(true)} title="Browse existing assets">
+          <Icon name="images" />
+        </button>
         <button type="button" className="btn btn--ghost" onClick={() => inputRef.current?.click()} disabled={busy} title="Upload file">
           {busy ? <Icon name="spinner" spin /> : <Icon name="upload" />}
         </button>
       </div>
+      {picking && (
+        <AssetPicker
+          kind="media"
+          onPick={(a) => a.url && onChange(a.url)}
+          onClose={() => setPicking(false)}
+        />
+      )}
       {value &&
         (isVideo(value) ? (
           <video src={value} muted loop autoPlay playsInline style={{ marginTop: 8, maxHeight: 90, borderRadius: 8, border: '1px solid var(--border)' }} />
@@ -472,6 +484,7 @@ function FileField({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const [picking, setPicking] = useState(false);
 
   async function onFile(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -496,6 +509,9 @@ function FileField({
         <button type="button" className="btn btn--ghost" onClick={() => inputRef.current?.click()} disabled={busy}>
           {busy ? <Icon name="spinner" spin /> : <Icon name="upload" />} {filename ? 'Replace file' : 'Upload file'}
         </button>
+        <button type="button" className="btn btn--ghost" onClick={() => setPicking(true)} disabled={busy}>
+          <Icon name="folder-open" /> Choose existing
+        </button>
         {filename && (
           <span className="admin-row__muted" style={{ fontSize: '0.85rem', wordBreak: 'break-word' }}>
             {filename}
@@ -504,6 +520,13 @@ function FileField({
         )}
       </div>
       <input ref={inputRef} type="file" hidden onChange={onFile} />
+      {picking && (
+        <AssetPicker
+          kind="file"
+          onPick={(a) => onUpload({ file: a.name, filename: a.name, size: a.sizeBytes })}
+          onClose={() => setPicking(false)}
+        />
+      )}
     </div>
   );
 }
