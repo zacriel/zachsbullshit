@@ -214,7 +214,10 @@ export function TileEditor({
 
             {tile.type === 'text' && (
               <>
-                <Field wide label="Text"><textarea className="textarea" value={config.body || ''} onChange={(e) => set('body', e.target.value)} /></Field>
+                <Field wide label="Text"><textarea className="textarea" style={{ minHeight: 120, fontFamily: 'var(--font-mono, monospace)' }} value={config.body || ''} onChange={(e) => set('body', e.target.value)} /></Field>
+                <p className="span-2 admin-row__muted" style={{ fontSize: '0.82rem', margin: 0 }}>
+                  Discord-style formatting: <code>**bold**</code>, <code>*italic*</code>, <code>__underline__</code>, <code>~~strike~~</code>, <code>||spoiler||</code>, <code>`code`</code>, <code>```code block```</code>, <code>&gt; quote</code>, <code># heading</code>, <code>- list</code>, <code>[label](url)</code>.
+                </p>
                 <Field label="Alignment">
                   <select className="input" value={config.align || 'left'} onChange={(e) => set('align', e.target.value)}>
                     <option value="left">Left</option>

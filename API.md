@@ -124,6 +124,13 @@ returns online/offline + player count + MOTD + version — no third-party servic
 Each check appends to a rolling 48-sample `history` (returned in `/api/tiles/status`)
 that powers the service sparkline and the `uptime` tile.
 
+**Rich text.** Free-text fields (the Text tile body; and inline on banner
+subtitles, link/project/download descriptions, contact subtitles) render
+Discord-flavored markdown: `**bold**`, `*italic*`/`_italic_`, `__underline__`,
+`~~strike~~`, `||spoiler||`, `` `code` ``, ` ```code fences``` `, `> quotes`,
+`#`/`##`/`###` headings, `-`/`1.` lists, `[label](url)` and bare URLs. Parsed to
+React nodes (no raw HTML); link tiles render descriptions without nested links.
+
 **Per-tile effects.** Every tile's `config` may carry interactivity overrides,
 each resolving against the site-wide master default (see Appearance below):
 `fx_spotlight` / `fx_tilt` (`"on"` | `"off"` | anything = default), `expand`

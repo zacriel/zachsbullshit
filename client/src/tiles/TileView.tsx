@@ -6,6 +6,7 @@ import { TileMedia } from './media';
 import { usePages } from './PagesContext';
 import { useAppearance, resolveFx } from '../appearance/AppearanceContext';
 import { useScramble } from '../fx/scramble';
+import { RichText, RichInline } from '../fx/richtext';
 import type { ServiceStatus, Tile } from '../types';
 
 /** Renders a single tile in view (non-editing) mode by its type. */
@@ -320,7 +321,7 @@ function BannerTile({ tile }: { tile: Tile }) {
       <div className="tile--banner__scrim" />
       <div className="tile--banner__content">
         <h1 className="tile--banner__title">{title}</h1>
-        {c.subtitle && <p className="tile--banner__subtitle">{c.subtitle}</p>}
+        {c.subtitle && <p className="tile--banner__subtitle"><RichInline text={c.subtitle} /></p>}
       </div>
     </div>
   );
@@ -367,7 +368,7 @@ function LinkTile({ tile }: { tile: Tile }) {
       )}
       <span className="link-card__body">
         <span className="link-card__label">{c.label || 'Link'}</span>
-        {c.description && <span className="link-card__desc">{c.description}</span>}
+        {c.description && <span className="link-card__desc"><RichInline text={c.description} links={false} /></span>}
       </span>
       <Icon name="arrow-up-right-from-square" className="link-card__arrow" />
     </a>
@@ -385,7 +386,7 @@ function ProjectTile({ tile }: { tile: Tile }) {
           {!c.hideIcon && <Icon name={c.icon || 'cube'} fixedWidth />}
           {c.title || 'Project'}
         </h3>
-        {c.description && <p className="project-card__desc">{c.description}</p>}
+        {c.description && <p className="project-card__desc"><RichInline text={c.description} /></p>}
         {tags.length > 0 && (
           <div className="tags">
             {tags.map((t) => (
@@ -416,7 +417,7 @@ function TextTile({ tile }: { tile: Tile }) {
   const c = tile.config;
   return (
     <div className="tile tile--text" style={{ textAlign: c.align || 'left' }}>
-      <p style={{ whiteSpace: 'pre-wrap', margin: 0 }}>{c.body || ''}</p>
+      <RichText text={c.body || ''} />
     </div>
   );
 }
@@ -511,7 +512,7 @@ function ContactTile({ tile }: { tile: Tile }) {
     <div className="tile tile--contact">
       <div className="tile--contact__head">
         <h3>{c.title || 'Get in touch'}</h3>
-        {c.subtitle && <p className="admin-row__muted">{c.subtitle}</p>}
+        {c.subtitle && <p className="admin-row__muted"><RichInline text={c.subtitle} /></p>}
       </div>
       {state === 'sent' ? (
         <div className="tile--contact__done">
@@ -658,7 +659,7 @@ function DownloadTile({ tile }: { tile: Tile }) {
           )}
         </div>
       </div>
-      {c.description && <p className="tile--download__desc">{c.description}</p>}
+      {c.description && <p className="tile--download__desc"><RichInline text={c.description} /></p>}
       <div className="tile--download__foot">
         {protectedFile && (
           <input

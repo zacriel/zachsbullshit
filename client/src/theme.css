@@ -1738,6 +1738,51 @@ video.tile-media__el {
 }
 .asset-card__meta { padding: 2px 9px 9px; font-size: 0.7rem; color: var(--text-faint); }
 
+/* ---------- Rich text (Discord-style formatting) ---------- */
+.rt { min-width: 0; }
+.rt--inline { display: inline; }
+.rt-p { margin: 0 0 0.5em; }
+.rt-p:last-child { margin-bottom: 0; }
+.rt .rt-h { margin: 0.4em 0 0.3em; line-height: 1.25; }
+.rt h3.rt-h { font-size: 1.25rem; }
+.rt h4.rt-h { font-size: 1.08rem; }
+.rt h5.rt-h { font-size: 0.95rem; color: var(--text-muted); }
+.rt-code {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.88em;
+  background: rgba(0, 0, 0, 0.32);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 0.1em 0.35em;
+}
+.rt-pre {
+  margin: 0.5em 0;
+  padding: 12px 14px;
+  background: rgba(0, 0, 0, 0.38);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow-x: auto;
+}
+.rt-pre code { font-family: var(--font-mono, ui-monospace, monospace); font-size: 0.86em; white-space: pre; }
+.rt-quote {
+  margin: 0.4em 0;
+  padding: 2px 0 2px 12px;
+  border-left: 3px solid var(--accent-line);
+  color: var(--text-muted);
+}
+.rt-list { margin: 0.4em 0; padding-left: 1.4em; display: flex; flex-direction: column; gap: 3px; }
+.rt-list li { line-height: 1.5; }
+.rt-spoiler {
+  background: var(--text);
+  color: transparent;
+  border-radius: 5px;
+  padding: 0 3px;
+  cursor: pointer;
+  transition: background 0.15s var(--ease), color 0.15s var(--ease);
+  user-select: none;
+}
+.rt-spoiler--on { background: rgba(255, 255, 255, 0.08); color: inherit; user-select: text; }
+
 /* ---------- Service uptime indicator ---------- */
 .svc-bar { display: flex; gap: 2px; height: 8px; margin-top: 2px; }
 .svc-bar__cell { flex: 1; border-radius: 2px; min-width: 2px; opacity: 0.85; }
