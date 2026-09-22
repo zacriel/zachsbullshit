@@ -27,3 +27,4 @@ npm-debug.log*
 .vscode/
 .idea/
 Thumbs.db
+aurora-preview.html
