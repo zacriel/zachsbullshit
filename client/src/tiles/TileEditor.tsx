@@ -215,9 +215,7 @@ export function TileEditor({
             {tile.type === 'text' && (
               <>
                 <Field wide label="Text"><textarea className="textarea" style={{ minHeight: 120, fontFamily: 'var(--font-mono, monospace)' }} value={config.body || ''} onChange={(e) => set('body', e.target.value)} /></Field>
-                <p className="span-2 admin-row__muted" style={{ fontSize: '0.82rem', margin: 0 }}>
-                  Discord-style formatting: <code>**bold**</code>, <code>*italic*</code>, <code>__underline__</code>, <code>~~strike~~</code>, <code>||spoiler||</code>, <code>`code`</code>, <code>```code block```</code>, <code>&gt; quote</code>, <code># heading</code>, <code>- list</code>, <code>[label](url)</code>.
-                </p>
+                <FormatHelp />
                 <Field label="Alignment">
                   <select className="input" value={config.align || 'left'} onChange={(e) => set('align', e.target.value)}>
                     <option value="left">Left</option>
@@ -400,6 +398,37 @@ function Field({ label, children, wide }: { label: string; children: ReactNode; 
     <div className={`field ${wide ? 'span-2' : ''}`}>
       <label>{label}</label>
       {children}
+    </div>
+  );
+}
+
+/** A tidy legend of the supported Discord-style formatting, with live examples. */
+const FORMAT_ROWS: { s: string; eg: ReactNode }[] = [
+  { s: '**bold**', eg: <strong>bold</strong> },
+  { s: '*italic*', eg: <em>italic</em> },
+  { s: '__underline__', eg: <u>underline</u> },
+  { s: '~~strike~~', eg: <s>strikethrough</s> },
+  { s: '`code`', eg: <code className="rt-code">code</code> },
+  { s: '||spoiler||', eg: <span className="fmt-help__spoiler">spoiler</span> },
+  { s: '# Heading', eg: <span style={{ fontWeight: 700 }}>Heading</span> },
+  { s: '> quote', eg: <span className="fmt-help__quote">quote</span> },
+  { s: '- list', eg: <span>• &nbsp;item</span> },
+  { s: '[text](url)', eg: <span style={{ color: 'var(--accent-bright)' }}>text</span> },
+];
+
+function FormatHelp() {
+  return (
+    <div className="fmt-help span-2">
+      <div className="fmt-help__title"><Icon name="wand-magic-sparkles" /> Formatting</div>
+      <div className="fmt-help__grid">
+        {FORMAT_ROWS.map((r) => (
+          <div key={r.s} className="fmt-help__row">
+            <code className="fmt-help__syntax">{r.s}</code>
+            <span className="fmt-help__eg">{r.eg}</span>
+          </div>
+        ))}
+      </div>
+      <div className="fmt-help__note">Triple-backtick fences also make a code block.</div>
     </div>
   );
 }
