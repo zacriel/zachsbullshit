@@ -2396,6 +2396,23 @@ body.is-leaving { opacity: 0; }
 .appx__preset { width: 30px; height: 30px; border-radius: 8px; border: 2px solid transparent; cursor: pointer; }
 .appx__preset--on { border-color: #fff; }
 .appx__foot { display: flex; align-items: center; gap: 10px; padding-top: 6px; border-top: 1px solid var(--border); }
+.appx__sliders { display: flex; flex-direction: column; gap: 13px; }
+.appx__ctl { display: flex; flex-direction: column; gap: 6px; }
+.appx__ctl-row { display: flex; justify-content: space-between; align-items: baseline; font-size: 0.85rem; }
+.appx__ctl-row label { color: var(--text); font-weight: 500; }
+.appx__ctl-val { font-family: var(--font-mono, ui-monospace, monospace); font-size: 0.78rem; color: var(--accent-bright); font-variant-numeric: tabular-nums; }
+.appx__range {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  outline: none;
+  cursor: pointer;
+  background: linear-gradient(90deg, var(--accent) 0 var(--fill, 50%), #2a2a36 var(--fill, 50%) 100%);
+}
+.appx__range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 2px solid var(--border-strong); cursor: pointer; }
+.appx__range::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 2px solid var(--border-strong); cursor: pointer; }
 
 /* ---------- Per-tile effects ---------- */
 /* Cursor spotlight: a soft glow that follows the pointer inside the tile. */

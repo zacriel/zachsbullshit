@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useAppearance } from '../appearance/AppearanceContext';
+import { useAppearance, type AuroraParams } from '../appearance/AppearanceContext';
 
 /**
  * The animated site background. Mode is chosen in Appearance settings:
@@ -13,7 +13,7 @@ export function BackgroundFX() {
   const mode = appearance.background;
 
   if (mode === 'off') return <div className="bg-solid" aria-hidden="true" />;
-  if (mode === 'aurora') return <Aurora />;
+  if (mode === 'aurora') return <Aurora cfg={appearance.aurora} />;
   if (mode === 'particles') return <Particles />;
   return (
     <>
@@ -48,7 +48,7 @@ function hslToRgb(h: number, s: number, l: number): [number, number, number] {
  * set of parameters (the playground "randomizer", baked in) so the aurora is
  * never quite the same twice.
  */
-function Aurora() {
+function Aurora({ cfg }: { cfg: AuroraParams }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const TAU = Math.PI * 2;
 
@@ -61,19 +61,32 @@ function Aurora() {
     const ctx = context;
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    // Randomized-but-tasteful parameters, centred on a look that reads well.
+    // Use the admin-tuned settings, or — when "randomize on every visit" is on —
+    // roll a fresh, tasteful look this load.
     const rnd = (a: number, b: number) => a + Math.random() * (b - a);
-    const P = {
-      count: Math.round(rnd(3, 5)),
-      spread: rnd(15, 32), // curtain height, % (÷26 = scale)
-      wisp: rnd(0.5, 0.9),
-      wave: rnd(0.85, 1.5),
-      blur: rnd(2, 10),
-      intensity: rnd(0.62, 0.92),
-      sat: rnd(95, 120),
-      hue: rnd(-40, 45),
-      speed: rnd(0.5, 1.25),
-    };
+    const P = cfg.randomize
+      ? {
+          count: Math.round(rnd(3, 5)),
+          spread: rnd(15, 32),
+          wisp: rnd(0.5, 0.9),
+          wave: rnd(0.85, 1.5),
+          blur: rnd(2, 10),
+          intensity: rnd(0.62, 0.92),
+          sat: rnd(95, 120),
+          hue: rnd(-40, 45),
+          speed: rnd(0.5, 1.25),
+        }
+      : {
+          count: cfg.bands,
+          spread: cfg.height,
+          wisp: cfg.wispiness / 100,
+          wave: cfg.waviness / 45,
+          blur: cfg.softness,
+          intensity: cfg.intensity / 100,
+          sat: cfg.saturation,
+          hue: cfg.hue,
+          speed: cfg.speed / 100,
+        };
     cv.style.filter = `blur(${P.blur.toFixed(1)}px)`;
 
     let W = 0;
@@ -197,7 +210,9 @@ function Aurora() {
       window.removeEventListener('resize', onResize);
       window.removeEventListener('pointermove', onMove);
     };
-  }, []);
+    // Re-init when the tuned settings change, for live preview in admin.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cfg]);
 
   return (
     <div className="aurora" aria-hidden="true">

@@ -144,7 +144,13 @@ Global look & interactivity live in the public `appearance` setting
 (`GET/PUT /api/settings/appearance`), edited from the admin **Appearance** page:
 `background` (`gradient` | `aurora` | `particles` | `off`), `accent` (hue 0–360
 or null), master toggles `spotlight` / `tilt` / `scramble` / `expand`, and
-`boot` (`{ enabled, once, title }`) for the boot-sequence intro.
+`boot` (`{ enabled, once, title, lines }` — `lines` is the editable boot-log
+script, one entry per line, with a `{title}` token) for the boot-sequence intro.
+When the
+background is `aurora`, `aurora` (`{ bands, height, wispiness, waviness,
+softness, intensity, saturation, hue, speed, randomize }`) tunes the canvas
+curtains — sliders appear in the Appearance page; `randomize: true` rolls a
+fresh look on every visit instead.
 
 ---
 

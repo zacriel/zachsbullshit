@@ -8,7 +8,7 @@ import { useAppearance } from '../appearance/AppearanceContext';
  */
 export function BootSequence() {
   const { appearance, loaded } = useAppearance();
-  const { enabled, once, title } = appearance.boot;
+  const { enabled, once, title, lines: bootLines } = appearance.boot;
   const [phase, setPhase] = useState<'boot' | 'closing' | 'done'>('done');
   const [lines, setLines] = useState<string[]>([]);
   const timers = useRef<number[]>([]);
@@ -28,16 +28,12 @@ export function BootSequence() {
     }
 
     setPhase('boot');
-    const script = [
-      `${title} — system boot`,
-      'BIOS check .............. OK',
-      'mounting /dev/homelab ... OK',
-      'starting services ....... OK',
-      'minecraft.service ....... online',
-      'reverse-proxy ........... online',
-      'loading dashboard ....... OK',
-      'welcome back, operator.',
-    ];
+    // Admin-editable lines; {title} is substituted, blank lines dropped.
+    const script = (bootLines || '')
+      .split('\n')
+      .map((ln) => ln.replace(/\{title\}/g, title))
+      .filter((ln) => ln.trim() !== '');
+    if (script.length === 0) script.push(`${title} — system boot`, 'loading dashboard … OK');
     script.forEach((ln, i) => {
       const t = window.setTimeout(() => setLines((prev) => [...prev, ln]), 260 + i * 260);
       timers.current.push(t);
@@ -58,7 +54,7 @@ export function BootSequence() {
       timers.current.forEach((t) => window.clearTimeout(t));
       timers.current = [];
     };
-  }, [loaded, enabled, once, title]);
+  }, [loaded, enabled, once, title, bootLines]);
 
   function skip() {
     timers.current.forEach((t) => window.clearTimeout(t));

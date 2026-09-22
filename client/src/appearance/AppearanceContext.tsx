@@ -7,6 +7,43 @@ import { api } from '../api';
  * override the per-tile effects (spotlight, tilt, expand, scramble) so control
  * is fully granular — a global default plus a per-tile opt-in/out.
  */
+export interface AuroraParams {
+  bands: number; // 2–5
+  height: number; // curtain height, %
+  wispiness: number; // 0–100
+  waviness: number; // %
+  softness: number; // blur px
+  intensity: number; // %
+  saturation: number; // %
+  hue: number; // hue shift, deg
+  speed: number; // drift %, 100 = base
+  randomize: boolean; // roll a fresh look on every visit
+}
+
+export const DEFAULT_BOOT_LINES = [
+  '{title} — system boot',
+  'BIOS check .............. OK',
+  'mounting /dev/homelab ... OK',
+  'starting services ....... OK',
+  'minecraft.service ....... online',
+  'reverse-proxy ........... online',
+  'loading dashboard ....... OK',
+  'welcome back, operator.',
+].join('\n');
+
+export const AURORA_DEFAULTS: AuroraParams = {
+  bands: 4,
+  height: 17,
+  wispiness: 80,
+  waviness: 48,
+  softness: 2,
+  intensity: 68,
+  saturation: 110,
+  hue: 40,
+  speed: 65,
+  randomize: false,
+};
+
 export interface Appearance {
   background: 'gradient' | 'aurora' | 'particles' | 'off';
   accent: number | null; // hue 0–360; null = theme default
@@ -14,7 +51,8 @@ export interface Appearance {
   tilt: boolean; // 3D hover tilt on tiles (master default)
   scramble: boolean; // text-scramble reveal on headings/banners (master default)
   expand: boolean; // click-to-expand tiles into a lightbox (master allow)
-  boot: { enabled: boolean; once: boolean; title: string };
+  boot: { enabled: boolean; once: boolean; title: string; lines: string };
+  aurora: AuroraParams;
 }
 
 export const APPEARANCE_DEFAULTS: Appearance = {
@@ -24,7 +62,8 @@ export const APPEARANCE_DEFAULTS: Appearance = {
   tilt: true,
   scramble: true,
   expand: true,
-  boot: { enabled: false, once: true, title: 'zachsbullshit' },
+  boot: { enabled: false, once: true, title: 'zachsbullshit', lines: DEFAULT_BOOT_LINES },
+  aurora: AURORA_DEFAULTS,
 };
 
 interface AppearanceState {
@@ -79,7 +118,13 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
     api
       .get<{ value: Partial<Appearance> | null }>('/settings/appearance')
       .then((r) => {
-        if (r.value) setAppearance((a) => ({ ...a, ...r.value, boot: { ...a.boot, ...(r.value?.boot || {}) } }));
+        if (r.value)
+          setAppearance((a) => ({
+            ...a,
+            ...r.value,
+            boot: { ...a.boot, ...(r.value?.boot || {}) },
+            aurora: { ...a.aurora, ...(r.value?.aurora || {}) },
+          }));
       })
       .catch(() => {})
       .finally(() => setLoaded(true));
