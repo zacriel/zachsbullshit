@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from 'react';
 import { Responsive, WidthProvider, type Layout } from 'react-grid-layout';
 import { api } from '../api';
 import { useAuth } from '../auth/AuthContext';
@@ -241,36 +241,88 @@ export function GridCanvas() {
   }, [notify]);
 
   // ---- Tiles (for the active page + globals) -----------------------------
-  // Drives the crossfade: 'out' = current board fading away, 'in' = settled.
+  // Page transitions: 'out' = the current page's tiles are drifting away,
+  // 'in' = settled. Global tiles (the tabs nav) never leave, so the thing you
+  // just clicked stays put while the content around it changes.
   const [phase, setPhase] = useState<'in' | 'out'>('in');
+  // Travel direction for the slide: 1 = to a tab on the right, -1 = left, 0 = none.
+  const [dir, setDir] = useState(0);
+  const [firstPaint, setFirstPaint] = useState(true);
+  const prevPageRef = useRef<number | null>(null);
+  const viewRef = useRef<HTMLDivElement>(null);
 
-  // Fetch the active page's tiles. The board fades out first; only once BOTH
-  // the fade-out and the fetch have finished do we swap the tiles (invisibly)
-  // and fade the new board back in — so a switch never blanks or pops.
+  // Hover-prefetch: tabs warm a page's tiles before it's clicked, so the swap
+  // only ever waits on the exit animation, never the network.
+  const prefetchRef = useRef(new Map<string, Promise<Tile[]>>());
+  const fetchTiles = useCallback(
+    (pageId: number, all: boolean) =>
+      api.get<{ tiles: Tile[] }>(`${all ? '/tiles/all' : '/tiles'}?page=${pageId}`).then((r) => r.tiles),
+    [],
+  );
+  const prefetchPage = useCallback(
+    (id: number) => {
+      if (id === activePageId) return;
+      const key = `${canEdit ? 'all' : 'pub'}:${id}`;
+      if (prefetchRef.current.has(key)) return;
+      const p = fetchTiles(id, canEdit);
+      p.catch(() => prefetchRef.current.delete(key));
+      prefetchRef.current.set(key, p);
+      // Don't serve stale prefetches for long.
+      window.setTimeout(() => prefetchRef.current.delete(key), 20_000);
+    },
+    [activePageId, canEdit, fetchTiles],
+  );
+
+  // Fetch the active page's tiles. The old page's tiles drift out first; only
+  // once BOTH the exit and the fetch have finished do we swap them, and the new
+  // tiles stagger in from the direction of travel.
   useEffect(() => {
     if (!activePageId) return;
     let cancelled = false;
-    const base = canEdit ? '/tiles/all' : '/tiles';
     // First paint (nothing on screen yet) and reduced-motion users skip the
-    // fade-out and just settle in place.
+    // exit and just settle in place.
     const firstLoad = tiles === null;
     const reduce =
       typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const instant = firstLoad || reduce;
+
+    const prevId = prevPageRef.current;
+    prevPageRef.current = activePageId;
+    if (prevId != null && prevId !== activePageId) {
+      const a = pages.findIndex((p) => p.id === prevId);
+      const b = pages.findIndex((p) => p.id === activePageId);
+      setDir(a < 0 || b < 0 ? 0 : b > a ? 1 : -1);
+    } else {
+      setDir(0);
+    }
     if (!instant) setPhase('out');
 
-    const fetchP = api
-      .get<{ tiles: Tile[] }>(`${base}?page=${activePageId}`)
-      .then((r) => r.tiles)
-      .catch(() => [] as Tile[]);
-    // Let the fade-out (0.18s) play out before swapping, so the content change
-    // happens while the board is fully transparent.
-    const waitP = new Promise<void>((res) => window.setTimeout(res, instant ? 0 : 190));
+    const key = `${canEdit ? 'all' : 'pub'}:${activePageId}`;
+    const warm = prefetchRef.current.get(key);
+    prefetchRef.current.delete(key);
+    const fresh = () => fetchTiles(activePageId, canEdit);
+    const fetchP = (warm ? warm.catch(fresh) : fresh()).catch(() => [] as Tile[]);
+    // Let the exit (0.2s) finish so the swap happens while the old tiles are gone.
+    const waitP = new Promise<void>((res) => window.setTimeout(res, instant ? 0 : 210));
 
     Promise.all([fetchP, waitP]).then(([next]) => {
       if (cancelled) return;
+      // Hold the board's current height through the swap, then ease to the
+      // new height — so the footer doesn't jump when page lengths differ.
+      const el = viewRef.current;
+      if (el && !instant) {
+        el.style.transition = 'none';
+        el.style.minHeight = `${el.offsetHeight}px`;
+        requestAnimationFrame(() =>
+          requestAnimationFrame(() => {
+            el.style.transition = 'min-height 0.55s var(--ease)';
+            el.style.minHeight = '0px';
+          }),
+        );
+      }
       setTiles(next);
       setPhase('in');
+      if (!firstLoad) setFirstPaint(false);
     });
     return () => {
       cancelled = true;
@@ -390,6 +442,7 @@ export function GridCanvas() {
     deletePage,
     reorderPages,
     openPageBackground: setBgEditingId,
+    prefetchPage,
   };
   const bgEditingPage = bgEditingId != null ? pages.find((p) => p.id === bgEditingId) ?? null : null;
 
@@ -412,7 +465,11 @@ export function GridCanvas() {
           <div className="empty" style={{ marginTop: 140 }}>Nothing here yet.</div>
         )}
 
-        <div className={`page-view ${phase === 'out' ? 'page-view--out' : ''}`}>
+        <div
+          ref={viewRef}
+          className={`page-view ${firstPaint ? 'page-view--first' : ''}`}
+          style={{ ['--dir']: dir } as CSSProperties}
+        >
         {isMobile ? (
           <div className="stack">
             {[...tiles]
@@ -425,7 +482,7 @@ export function GridCanvas() {
                 return (
                   <div
                     key={String(tile.id)}
-                    className={`stack-item ${wide ? 'stack-item--wide' : ''} ${!tile.enabled ? 'grid-item--hidden' : ''} ${bg ? 'grid-item--bg' : ''} ${tile.config.floating ? 'is-floating' : ''} ${!canEdit && tile.config.hover_buttons ? 'tile-hover-btns' : ''}`}
+                    className={`stack-item ${wide ? 'stack-item--wide' : ''} ${phase === 'out' && tile.page_id != null ? 'grid-item--out' : ''} ${!tile.enabled ? 'grid-item--hidden' : ''} ${bg ? 'grid-item--bg' : ''} ${tile.config.floating ? 'is-floating' : ''} ${!canEdit && tile.config.hover_buttons ? 'tile-hover-btns' : ''}`}
                     style={bg && !vid ? ({ ['--tile-bg']: `url("${bg}")` } as CSSProperties) : undefined}
                   >
                     {bg && vid && <TileMedia src={bg!} audio={!!tile.config.bg_audio} />}
@@ -486,7 +543,7 @@ export function GridCanvas() {
               return (
                 <div
                   key={String(tile.id)}
-                  className={`grid-item ${!tile.enabled ? 'grid-item--hidden' : ''} ${bg ? 'grid-item--bg' : ''} ${tile.config.floating ? 'is-floating' : ''} ${fxSpot ? 'fx-spotlight' : ''} ${fxTilt ? 'fx-tilt' : ''} ${!canEdit && tile.config.hover_buttons ? 'tile-hover-btns' : ''}`}
+                  className={`grid-item ${phase === 'out' && tile.page_id != null ? 'grid-item--out' : ''} ${!tile.enabled ? 'grid-item--hidden' : ''} ${bg ? 'grid-item--bg' : ''} ${tile.config.floating ? 'is-floating' : ''} ${fxSpot ? 'fx-spotlight' : ''} ${fxTilt ? 'fx-tilt' : ''} ${!canEdit && tile.config.hover_buttons ? 'tile-hover-btns' : ''}`}
                   style={bg && !vid ? ({ ['--tile-bg']: `url("${bg}")` } as CSSProperties) : undefined}
                   onMouseMove={fxSpot || fxTilt ? (e) => fxMove(e, fxSpot, fxTilt) : undefined}
                   onMouseLeave={fxTilt ? fxLeave : undefined}
@@ -507,7 +564,7 @@ export function GridCanvas() {
                         </button>
                       </div>
                       {!tile.enabled && <span className="tile-hidden-badge">Hidden</span>}
-                      <span className="tile-drag-hint"><Icon name="up-down-left-right" /></span>
+                      {tile.type !== 'tabs' && <span className="tile-drag-hint"><Icon name="up-down-left-right" /></span>}
                     </>
                   )}
                 </div>

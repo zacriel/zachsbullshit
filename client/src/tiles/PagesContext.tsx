@@ -17,6 +17,8 @@ export interface PagesCtx {
   reorderPages: (ids: number[]) => Promise<void>;
   /** Open the background editor for a page. */
   openPageBackground: (id: number) => void;
+  /** Warm a page's tiles (e.g. on tab hover) so switching to it is instant. */
+  prefetchPage: (id: number) => void;
 }
 
 const noop = async () => {};
@@ -30,6 +32,7 @@ export const PagesContext = createContext<PagesCtx>({
   deletePage: noop,
   reorderPages: noop,
   openPageBackground: () => {},
+  prefetchPage: () => {},
 });
 
 export const usePages = () => useContext(PagesContext);

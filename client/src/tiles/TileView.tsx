@@ -1,4 +1,15 @@
-import { useEffect, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+  type RefObject,
+  type SyntheticEvent,
+} from 'react';
+import { createPortal } from 'react-dom';
 import { api, ApiError, trackClick } from '../api';
 import { useAuth } from '../auth/AuthContext';
 import { Icon } from '../components/Icon';
@@ -223,7 +234,8 @@ function faviconUrl(rawUrl: string): string | null {
 function TabsTile({ tile }: { tile: Tile }) {
   const c = tile.config;
   const { authed, editMode } = useAuth();
-  const { pages, activePageId, setActivePage, addPage, renamePage, deletePage, reorderPages, openPageBackground } = usePages();
+  const { pages, activePageId, setActivePage, addPage, renamePage, deletePage, reorderPages, openPageBackground, prefetchPage } =
+    usePages();
   const editing = !!authed && editMode;
   const justify = c.align === 'left' ? 'flex-start' : c.align === 'right' ? 'flex-end' : 'center';
   const variant = c.variant === 'underline' ? 'underline' : 'pills';
@@ -254,56 +266,187 @@ function TabsTile({ tile }: { tile: Tile }) {
     void reorderPages(ids);
   }
 
+  // The page-actions menu lives in a portal so it never gets clipped by the
+  // tile (which is a single grid row tall with overflow hidden).
+  const [menuOpen, setMenuOpen] = useState(false);
+  const gearRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!editing) setMenuOpen(false);
+  }, [editing]);
+
+  // Sliding active indicator: one "thumb" glides to whichever tab is active
+  // instead of the highlight jumping between buttons.
+  const rowRef = useRef<HTMLDivElement>(null);
+  const [thumb, setThumb] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  const [thumbLive, setThumbLive] = useState(false); // transitions on only after first placement
+  useLayoutEffect(() => {
+    const row = rowRef.current;
+    if (!row) return;
+    const place = () => {
+      const btn = row.querySelector<HTMLElement>('.tabnav--on');
+      setThumb(btn ? { x: btn.offsetLeft, y: btn.offsetTop, w: btn.offsetWidth, h: btn.offsetHeight } : null);
+    };
+    place();
+    const ro = new ResizeObserver(place);
+    ro.observe(row);
+    row.querySelectorAll('.tabnav').forEach((b) => ro.observe(b));
+    return () => ro.disconnect();
+  }, [activePageId, pages, editing]);
+  useEffect(() => {
+    if (!thumb || thumbLive) return;
+    const id = requestAnimationFrame(() => setThumbLive(true));
+    return () => cancelAnimationFrame(id);
+  }, [thumb, thumbLive]);
+
   return (
-    <div className={`tile tile--tabs tile--tabs--${variant}`}>
+    <div className={`tile tile--tabs tile--tabs--${variant} ${editing ? 'tile--tabs--edit' : ''}`}>
       {editing && (
         <span className="tabs__grip" title="Drag to move this tile">
-          <Icon name="up-down-left-right" /> Drag to move
+          <Icon name="grip-vertical" />
         </span>
       )}
-      <div className="tabs__row" style={{ justifyContent: justify }}>
+      <div ref={rowRef} className={`tabs__row ${thumb ? 'tabs__row--thumb' : ''}`} style={{ justifyContent: justify }}>
+        {thumb && (
+          <span
+            className={`tabs__thumb ${thumbLive ? 'tabs__thumb--live' : ''}`}
+            aria-hidden="true"
+            style={{ width: thumb.w, height: thumb.h, transform: `translate(${thumb.x}px, ${thumb.y}px)` }}
+          />
+        )}
         {pages.map((p) => (
           <button
             key={p.id}
             className={`tabnav ${p.id === activePageId ? 'tabnav--on' : ''}`}
             onClick={() => setActivePage(p.id)}
+            onPointerEnter={() => prefetchPage(p.id)}
+            onFocus={() => prefetchPage(p.id)}
+            aria-current={p.id === activePageId ? 'page' : undefined}
           >
             {p.name}
+            {editing && p.background && <span className="tabnav__dot" title="Has its own background" />}
           </button>
         ))}
         {editing && (
-          <button className="tabnav tabnav--add" onClick={onAdd} title="Add page">
-            <Icon name="plus" />
-          </button>
+          <>
+            <button className="tabnav tabnav--add" onClick={onAdd} title="Add page">
+              <Icon name="plus" />
+            </button>
+            {active && (
+              <button
+                ref={gearRef}
+                className={`tabnav tabnav--manage ${menuOpen ? 'tabnav--manage-on' : ''}`}
+                onClick={() => setMenuOpen((o) => !o)}
+                title={`Manage “${active.name}”`}
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+              >
+                <Icon name="gear" />
+              </button>
+            )}
+          </>
         )}
         {pages.length === 0 && !editing && <span className="admin-row__muted">No pages</span>}
       </div>
 
-      {editing && active && (
-        <div className="tabs__admin">
-          <span className="admin-row__muted" style={{ marginRight: 4 }}>Page “{active.name}”:</span>
-          <button className="btn btn--ghost btn--sm" onClick={() => move(-1)} disabled={activeIdx === 0} title="Move left">
-            <Icon name="arrow-left" />
+      {editing && menuOpen && active && (
+        <PageMenu anchor={gearRef} onClose={() => setMenuOpen(false)}>
+          <div className="pagemenu__title">Page “{active.name}”</div>
+          <div className="pagemenu__move">
+            <button className="pagemenu__item" onClick={() => move(-1)} disabled={activeIdx === 0}>
+              <Icon name="arrow-left" fixedWidth /> Move left
+            </button>
+            <button className="pagemenu__item" onClick={() => move(1)} disabled={activeIdx === pages.length - 1}>
+              Move right <Icon name="arrow-right" fixedWidth />
+            </button>
+          </div>
+          <button className="pagemenu__item" onClick={() => { setMenuOpen(false); void onRename(); }}>
+            <Icon name="pen" fixedWidth /> Rename
           </button>
-          <button className="btn btn--ghost btn--sm" onClick={() => move(1)} disabled={activeIdx === pages.length - 1} title="Move right">
-            <Icon name="arrow-right" />
+          <button className="pagemenu__item" onClick={() => { setMenuOpen(false); openPageBackground(active.id); }}>
+            <Icon name="image" fixedWidth /> Background
+            <span className="pagemenu__meta">{active.background ? 'Custom' : 'Site default'}</span>
           </button>
-          <button className="btn btn--ghost btn--sm" onClick={onRename}>
-            <Icon name="pen" /> Rename
-          </button>
+          <div className="pagemenu__sep" />
           <button
-            className="btn btn--ghost btn--sm"
-            onClick={() => openPageBackground(active.id)}
-            title={active.background ? 'This page has its own background' : 'Using the site background'}
+            className="pagemenu__item pagemenu__item--danger"
+            onClick={() => { setMenuOpen(false); void onDelete(); }}
+            disabled={pages.length <= 1}
+            title={pages.length <= 1 ? "Can't delete the only page" : undefined}
           >
-            <Icon name="image" /> Background{active.background ? ' •' : ''}
+            <Icon name="trash" fixedWidth /> Delete page
           </button>
-          <button className="btn btn--danger btn--sm" onClick={onDelete} disabled={pages.length <= 1}>
-            <Icon name="trash" /> Delete
-          </button>
-        </div>
+        </PageMenu>
       )}
     </div>
+  );
+}
+
+/**
+ * A small floating menu anchored under (or above) a button, portalled to
+ * <body>. Closes on outside click, Escape, scroll, or resize. Pointer events
+ * are stopped so the grid never mistakes a click in here for a tile drag.
+ */
+function PageMenu({
+  anchor,
+  onClose,
+  children,
+}: {
+  anchor: RefObject<HTMLElement>;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+
+  useLayoutEffect(() => {
+    const a = anchor.current;
+    const m = ref.current;
+    if (!a || !m) return;
+    const r = a.getBoundingClientRect();
+    const mw = m.offsetWidth;
+    const mh = m.offsetHeight;
+    const left = Math.min(Math.max(8, r.left + r.width / 2 - mw / 2), window.innerWidth - mw - 8);
+    const below = r.bottom + 8;
+    const top = below + mh > window.innerHeight - 8 ? Math.max(8, r.top - mh - 8) : below;
+    setPos({ top, left });
+  }, [anchor]);
+
+  useEffect(() => {
+    const onDown = (e: MouseEvent | TouchEvent) => {
+      const t = e.target as Node;
+      if (ref.current?.contains(t) || anchor.current?.contains(t)) return;
+      onClose();
+    };
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    const onMove = () => onClose();
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('touchstart', onDown);
+    document.addEventListener('keydown', onKey);
+    window.addEventListener('scroll', onMove, true);
+    window.addEventListener('resize', onMove);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('touchstart', onDown);
+      document.removeEventListener('keydown', onKey);
+      window.removeEventListener('scroll', onMove, true);
+      window.removeEventListener('resize', onMove);
+    };
+  }, [anchor, onClose]);
+
+  const stop = (e: SyntheticEvent) => e.stopPropagation();
+  return createPortal(
+    <div
+      ref={ref}
+      className="pagemenu"
+      role="menu"
+      style={pos ? { top: pos.top, left: pos.left } : { visibility: 'hidden', top: 0, left: 0 }}
+      onMouseDown={stop}
+      onTouchStart={stop}
+      onPointerDown={stop}
+    >
+      {children}
+    </div>,
+    document.body,
   );
 }
 

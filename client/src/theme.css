@@ -1970,24 +1970,35 @@ video.tile-media__el {
 .carousel__btn:hover { background: var(--accent-soft); border-color: var(--accent-line); transform: translateY(-1px); }
 
 /* ---------- Page (tab) switch transition ---------- */
-/* First paint eases in via the keyframe; subsequent tab switches fade out
-   (.page-view--out) then back in through the opacity/transform transition. */
-.page-view {
-  animation: pageIn 0.32s var(--ease) both;
-  transition: opacity 0.28s var(--ease), transform 0.28s var(--ease);
-}
-.page-view--out {
+/* Page transitions. The board itself never fades — individual page tiles do,
+   so global tiles (the tabs nav) stay rock-steady through a switch.
+   --dir is 1 when moving to a tab on the right, -1 to the left, 0 otherwise. */
+.page-view { --dir: 0; --dy: 0px; }
+.page-view--first { --dy: 10px; } /* first load: a gentle rise instead of a slide */
+
+/* Exit: the old page's tiles drift opposite the direction of travel and fade. */
+.grid-wrap .grid-item--out,
+.grid-wrap .grid-item.fx-tilt.grid-item--out {
   opacity: 0;
-  transform: translateY(8px);
-  transition-duration: 0.18s;
+  transform: translate3d(calc(var(--dir) * -22px), 0, 0) scale(0.985);
+  transition: opacity 0.2s ease-in, transform 0.22s ease-in;
+  pointer-events: none;
 }
-@keyframes pageIn {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
+
+/* Enter: new tiles arrive from the direction of travel, staggered top-to-bottom. */
+/* Tiles that survive a reload (e.g. toggling edit mode) ease back in rather
+   than popping. Not in edit mode, so dragging/resizing stays instant. */
+:where(.grid-wrap:not(.grid-wrap--edit)) .react-grid-item {
+  transition: opacity 0.3s var(--ease), transform 0.3s var(--ease), width 0.18s var(--ease), height 0.18s var(--ease);
+}
+@keyframes tile-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(calc(var(--dir) * 28px), var(--dy), 0) scale(0.985);
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  .page-view { animation: none; transition: none; }
-  .page-view--out { opacity: 1; transform: none; }
+  .grid-wrap .grid-item--out { opacity: 1; transform: none; transition: none; }
 }
 
 /* Embed */
@@ -2100,10 +2111,45 @@ video.tile-media__el {
   box-shadow: none;
 }
 .tabs__row {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+}
+/* Sliding active-tab indicator — one element glides between tabs. */
+.tabs__thumb {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-deep));
+  border: 1px solid var(--accent-line);
+  box-shadow: var(--shadow-accent);
+  pointer-events: none;
+}
+.tabs__thumb--live {
+  transition: transform 0.45s var(--ease), width 0.45s var(--ease), height 0.45s var(--ease);
+}
+.tabs__row--thumb .tabnav { z-index: 1; }
+.tabs__row--thumb .tabnav--on {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.tabs__row--thumb .tabnav--on:hover { transform: none; }
+.tile--tabs--underline .tabs__thumb {
+  background: none;
+  border: none;
+  border-bottom: 2px solid var(--accent-bright);
+  border-radius: 0;
+  box-shadow: none;
+}
+.tile--tabs--underline .tabs__row--thumb .tabnav--on { border-bottom-color: transparent; }
+@media (prefers-reduced-motion: reduce) {
+  .tabs__thumb--live { transition: none; }
 }
 .tabnav {
   font-family: var(--font-display);
@@ -2152,32 +2198,103 @@ video.tile-media__el {
 }
 .tile--tabs--underline .tabnav--add { border-bottom: none; }
 
-.tabs__admin {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  padding-top: 4px;
-  border-top: 1px dashed var(--border);
-  font-size: 0.85rem;
+/* Edit mode stays a single row: a slim drag handle on the left, and page
+   actions live in a floating menu (so nothing overflows the one-row tile). */
+.tile--tabs--edit {
+  position: relative;
+  padding-left: 40px;
+  padding-right: 52px; /* clear the tile's edit (pen) button */
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
 }
 .tabs__grip {
-  align-self: center;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
+  position: absolute;
+  left: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: calc(100% - 16px);
+  max-height: 56px;
   cursor: grab;
   color: var(--text-faint);
-  font-size: 0.75rem;
-  letter-spacing: 0.02em;
-  padding: 3px 12px;
-  border-radius: 999px;
+  border-radius: 8px;
   border: 1px dashed var(--border-strong);
   background: var(--surface-glass);
   user-select: none;
 }
-.tabs__grip:hover { color: var(--text-muted); }
+.tabs__grip:hover { color: var(--text); border-color: var(--accent-line); }
 .tabs__grip:active { cursor: grabbing; }
+.tabnav { position: relative; }
+.tabnav__dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 7px;
+  vertical-align: middle;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.75;
+}
+.tabnav--manage { padding: 9px 13px; color: var(--text-muted); }
+.tabnav--manage-on { color: #fff; border-color: var(--accent-line); background: var(--accent-soft); }
+.tile--tabs--underline .tabnav--manage { border-bottom: none; }
+
+/* Floating page-actions menu (portalled to <body>). */
+.pagemenu {
+  position: fixed;
+  z-index: 250;
+  min-width: 220px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  animation: pop 0.16s var(--ease);
+}
+.pagemenu__title {
+  padding: 6px 10px 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 260px;
+}
+.pagemenu__move { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; }
+.pagemenu__move .pagemenu__item:last-child { justify-content: flex-end; }
+.pagemenu__item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.88rem;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.pagemenu__item .svg-inline--fa { color: var(--text-muted); }
+.pagemenu__item:hover:not(:disabled) { background: var(--accent-soft); }
+.pagemenu__item:hover:not(:disabled) .svg-inline--fa { color: var(--accent-bright); }
+.pagemenu__item:disabled { opacity: 0.4; cursor: not-allowed; }
+.pagemenu__item--danger, .pagemenu__item--danger .svg-inline--fa { color: #f87171; }
+.pagemenu__item--danger:hover:not(:disabled) { background: rgba(248, 113, 113, 0.12); }
+.pagemenu__item--danger:hover:not(:disabled) .svg-inline--fa { color: #f87171; }
+.pagemenu__meta { margin-left: auto; padding-left: 12px; font-size: 0.75rem; color: var(--text-faint); }
+.pagemenu__sep { height: 1px; margin: 4px 6px; background: var(--border); }
 
 /* ---------- Go-links admin ---------- */
 .golinks__intro { margin-bottom: 18px; }
@@ -2274,21 +2391,22 @@ body.is-leaving { opacity: 0; }
 @keyframes panel-in { from { opacity: 0; transform: translateY(6px); } }
 .tab-panel { animation: panel-in 0.32s var(--ease) both; }
 
-/* Dashboard tiles fade in with a gentle stagger. Grid tiles animate opacity
-   only (react-grid-layout drives their positioning transform); the mobile
-   stack is normal flow, so it can also drift up a touch. */
-@keyframes tile-in { from { opacity: 0; } }
-@keyframes tile-in-stack { from { opacity: 0; transform: translateY(8px); } }
-.grid-item { animation: tile-in 0.4s var(--ease) both; }
-.stack-item { animation: tile-in-stack 0.4s var(--ease) both; }
-.grid-item:nth-child(2),  .stack-item:nth-child(2)  { animation-delay: 0.04s; }
-.grid-item:nth-child(3),  .stack-item:nth-child(3)  { animation-delay: 0.08s; }
-.grid-item:nth-child(4),  .stack-item:nth-child(4)  { animation-delay: 0.12s; }
-.grid-item:nth-child(5),  .stack-item:nth-child(5)  { animation-delay: 0.16s; }
-.grid-item:nth-child(6),  .stack-item:nth-child(6)  { animation-delay: 0.20s; }
-.grid-item:nth-child(7),  .stack-item:nth-child(7)  { animation-delay: 0.24s; }
-.grid-item:nth-child(8),  .stack-item:nth-child(8)  { animation-delay: 0.28s; }
-.grid-item:nth-child(n+9), .stack-item:nth-child(n+9) { animation-delay: 0.3s; }
+/* Dashboard tiles enter with a gentle stagger (see .page-view for --dir/--dy).
+   Grid items are positioned with top/left (no CSS transforms), so the
+   animation is free to use transform. Fill mode is `backwards` so nothing
+   lingers afterwards to fight the hover-tilt transform. A tile that persists
+   across pages (the tabs nav) isn't remounted, so it never re-animates. */
+.grid-item, .stack-item { animation: tile-enter 0.5s var(--ease) backwards; }
+.grid-item:nth-child(2),  .stack-item:nth-child(2)  { animation-delay: 0.035s; }
+.grid-item:nth-child(3),  .stack-item:nth-child(3)  { animation-delay: 0.07s; }
+.grid-item:nth-child(4),  .stack-item:nth-child(4)  { animation-delay: 0.105s; }
+.grid-item:nth-child(5),  .stack-item:nth-child(5)  { animation-delay: 0.14s; }
+.grid-item:nth-child(6),  .stack-item:nth-child(6)  { animation-delay: 0.175s; }
+.grid-item:nth-child(7),  .stack-item:nth-child(7)  { animation-delay: 0.21s; }
+.grid-item:nth-child(8),  .stack-item:nth-child(8)  { animation-delay: 0.245s; }
+.grid-item:nth-child(n+9), .stack-item:nth-child(n+9) { animation-delay: 0.28s; }
+/* The mobile stack also needs a transition for the exit (it isn't a .react-grid-item). */
+.stack-item { transition: opacity 0.2s ease-in, transform 0.22s ease-in; }
 
 @media (prefers-reduced-motion: reduce) {
   .gradient-bg, .gradient-bg::after, .jumbo h1, .jumbo__scroll, .edit-banner__dot {
