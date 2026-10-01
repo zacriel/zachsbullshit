@@ -1,25 +1,96 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAppearance, type AuroraParams } from '../appearance/AppearanceContext';
+import { isVideo } from '../tiles/media';
+import type { PageBackground } from '../types';
 
 /**
- * The animated site background. Mode is chosen in Appearance settings:
+ * The animated site background. Mode is chosen in Appearance settings, and any
+ * page can override it with its own (set from the tabs tile in edit mode):
  *   gradient  — the original flowing charcoal→purple gradient
  *   aurora    — soft drifting light blobs that lean toward the cursor
  *   particles — a cursor-reactive constellation on a canvas
  *   off       — a plain solid ground
+ *   media     — a custom image or video (page override only)
+ *
+ * Switching backgrounds crossfades: the new layer fades in over the old one,
+ * which is then dropped.
  */
-export function BackgroundFX() {
-  const { appearance } = useAppearance();
-  const mode = appearance.background;
+const FADE_MS = 700;
 
-  if (mode === 'off') return <div className="bg-solid" aria-hidden="true" />;
-  if (mode === 'aurora') return <Aurora cfg={appearance.aurora} />;
-  if (mode === 'particles') return <Particles />;
+/** Identity of a background — layers only swap when this changes (not on dim/blur tweaks). */
+function bgKey(s: PageBackground): string {
+  return s.mode === 'media' ? `media:${s.media_url}` : s.mode;
+}
+
+export function BackgroundFX() {
+  const { appearance, pageBackground } = useAppearance();
+  const usable = pageBackground && (pageBackground.mode !== 'media' || !!pageBackground.media_url);
+  const spec: PageBackground = usable ? pageBackground! : { mode: appearance.background };
+  const key = bgKey(spec);
+
+  const idRef = useRef(0);
+  const [layers, setLayers] = useState<{ id: number; key: string; spec: PageBackground }[]>(() => [
+    { id: 0, key, spec },
+  ]);
+
+  // Push a new layer when the background identity changes.
+  useEffect(() => {
+    setLayers((prev) => {
+      if (prev[prev.length - 1]?.key === key) return prev;
+      idRef.current += 1;
+      return [...prev.slice(-1), { id: idRef.current, key, spec }];
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+
+  // Once the newest layer has faded in, drop the ones beneath it.
+  useEffect(() => {
+    if (layers.length < 2) return;
+    const t = window.setTimeout(() => setLayers((l) => l.slice(-1)), FADE_MS);
+    return () => window.clearTimeout(t);
+  }, [layers]);
+
   return (
     <>
-      <div className="gradient-bg" aria-hidden="true" />
-      <div className="gradient-veil" aria-hidden="true" />
+      {layers.map((l, i) => (
+        <div key={l.id} className="bgfx-layer" aria-hidden="true">
+          {/* The top layer always renders the live spec so dim/blur previews update in place. */}
+          {renderBg(i === layers.length - 1 ? spec : l.spec, appearance.aurora)}
+        </div>
+      ))}
     </>
+  );
+}
+
+function renderBg(s: PageBackground, aurora: AuroraParams) {
+  if (s.mode === 'media' && s.media_url) return <MediaBg spec={s} />;
+  if (s.mode === 'off') return <div className="bg-solid" />;
+  if (s.mode === 'aurora') return <Aurora cfg={aurora} />;
+  if (s.mode === 'particles') return <Particles />;
+  return (
+    <>
+      <div className="gradient-bg" />
+      <div className="gradient-veil" />
+    </>
+  );
+}
+
+/** A full-screen image or looping muted video, with optional blur and a darkening veil. */
+function MediaBg({ spec }: { spec: PageBackground }) {
+  const url = spec.media_url!;
+  const dim = spec.dim ?? 55;
+  const blur = spec.blur ?? 0;
+  // Scale up slightly when blurred so the soft edges don't show.
+  const style = blur > 0 ? { filter: `blur(${blur}px)`, transform: `scale(${1 + Math.min(blur, 40) / 200})` } : undefined;
+  return (
+    <div className="bg-media">
+      {isVideo(url) ? (
+        <video className="bg-media__el" src={url} style={style} autoPlay muted loop playsInline />
+      ) : (
+        <img className="bg-media__el" src={url} style={style} alt="" />
+      )}
+      <div className="bg-media__dim" style={{ background: `rgba(10, 10, 14, ${dim / 100})` }} />
+    </div>
   );
 }
 

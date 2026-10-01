@@ -9,7 +9,8 @@ import { TileEditor } from '../tiles/TileEditor';
 import { TileMedia, isVideo } from '../tiles/media';
 import { PALETTE, TILE_DEFAULTS } from '../tiles/defaults';
 import { PagesContext, type PagesCtx } from '../tiles/PagesContext';
-import type { Page, ServiceStatus, Tile, TileType } from '../types';
+import { PageBackgroundEditor } from '../tiles/PageBackgroundEditor';
+import type { Page, PageBackground, ServiceStatus, Tile, TileType } from '../types';
 
 /** Cursor spotlight + hover-tilt: write CSS vars imperatively (no re-render). */
 function fxMove(e: ReactMouseEvent<HTMLDivElement>, spot: boolean, tilt: boolean) {
@@ -100,8 +101,10 @@ function tileMins(t: Tile): { minW: number; minH: number } {
  */
 export function GridCanvas() {
   const { authed, editMode, notify } = useAuth();
-  const { appearance } = useAppearance();
+  const { appearance, setPageBackground } = useAppearance();
   const canEdit = !!authed && editMode;
+  // Page whose background is being edited (drives the background editor modal).
+  const [bgEditingId, setBgEditingId] = useState<number | null>(null);
 
   const [pages, setPages] = useState<Page[]>([]);
   const [activePageId, setActivePageId] = useState<number | null>(null);
@@ -210,6 +213,31 @@ export function GridCanvas() {
   const reorderPages = useCallback(async (ids: number[]) => {
     setPages((prev) => ids.map((id) => prev.find((p) => p.id === id)).filter(Boolean) as Page[]);
     await api.put('/tiles/pages/reorder', { ids }).catch(() => notify('Reorder failed', true));
+  }, [notify]);
+
+  // ---- Per-page background ----------------------------------------------
+  // Hand the active page's background override to the site background. While
+  // the editor is open it drives the preview itself; closing it resyncs here.
+  const activePage = pages.find((p) => p.id === activePageId) ?? null;
+  useEffect(() => {
+    if (bgEditingId != null) return;
+    setPageBackground(activePage?.background ?? null);
+  }, [activePage, bgEditingId, setPageBackground]);
+  useEffect(() => () => setPageBackground(null), [setPageBackground]);
+  // Leaving edit mode abandons an open background edit (and its preview).
+  useEffect(() => {
+    if (!canEdit) setBgEditingId(null);
+  }, [canEdit]);
+
+  const savePageBackground = useCallback(async (id: number, background: PageBackground | null) => {
+    try {
+      const { page } = await api.put<{ page: Page }>(`/tiles/pages/${id}`, { background });
+      setPages((prev) => prev.map((p) => (p.id === id ? page : p)));
+      setBgEditingId(null);
+      notify('Background saved');
+    } catch {
+      notify('Save failed', true);
+    }
   }, [notify]);
 
   // ---- Tiles (for the active page + globals) -----------------------------
@@ -353,7 +381,17 @@ export function GridCanvas() {
     await api.del(`/tiles/${id}`).catch(() => notify('Delete failed', true));
   }
 
-  const pagesCtx: PagesCtx = { pages, activePageId, setActivePage, addPage, renamePage, deletePage, reorderPages };
+  const pagesCtx: PagesCtx = {
+    pages,
+    activePageId,
+    setActivePage,
+    addPage,
+    renamePage,
+    deletePage,
+    reorderPages,
+    openPageBackground: setBgEditingId,
+  };
+  const bgEditingPage = bgEditingId != null ? pages.find((p) => p.id === bgEditingId) ?? null : null;
 
   if (!tiles) {
     return (
@@ -438,10 +476,13 @@ export function GridCanvas() {
               // drag-cover overlay (it's marked draggableCancel instead).
               const cover = canEdit && tile.type !== 'tabs';
               // Per-tile interactivity resolves the tile's override against the
-              // site-wide master toggle (disabled entirely while editing).
-              const fxSpot = !canEdit && resolveFx(tile.config.fx_spotlight, appearance.spotlight);
-              const fxTilt = !canEdit && resolveFx(tile.config.fx_tilt, appearance.tilt);
-              const fxExpand = !canEdit && appearance.expand && !!tile.config.expand;
+              // site-wide master toggle (disabled entirely while editing). The
+              // tabs nav is excluded — a transform on it breaks the pills'
+              // backdrop-filter (a Chromium quirk) and it isn't a content tile.
+              const fx = !canEdit && tile.type !== 'tabs';
+              const fxSpot = fx && resolveFx(tile.config.fx_spotlight, appearance.spotlight);
+              const fxTilt = fx && resolveFx(tile.config.fx_tilt, appearance.tilt);
+              const fxExpand = fx && appearance.expand && !!tile.config.expand;
               return (
                 <div
                   key={String(tile.id)}
@@ -496,6 +537,14 @@ export function GridCanvas() {
 
         {editing && (
           <TileEditor tile={editing} onSave={saveTile} onDelete={deleteTile} onClose={() => setEditing(null)} />
+        )}
+
+        {bgEditingPage && canEdit && (
+          <PageBackgroundEditor
+            page={bgEditingPage}
+            onSave={(bg) => savePageBackground(bgEditingPage.id, bg)}
+            onClose={() => setBgEditingId(null)}
+          />
         )}
 
         {expanded && (

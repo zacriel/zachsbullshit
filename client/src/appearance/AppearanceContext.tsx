@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { api } from '../api';
+import type { PageBackground } from '../types';
 
 /**
  * Site-wide appearance & interactivity settings, persisted under the public
@@ -73,6 +74,9 @@ interface AppearanceState {
   setLocal: (patch: Partial<Appearance>) => void;
   /** Persist the whole object (admin only). */
   save: (next: Appearance) => Promise<void>;
+  /** The active page's background override (null = use the site background). */
+  pageBackground: PageBackground | null;
+  setPageBackground: (bg: PageBackground | null) => void;
 }
 
 const Ctx = createContext<AppearanceState | null>(null);
@@ -144,5 +148,12 @@ export function AppearanceProvider({ children }: { children: ReactNode }) {
     await api.put('/settings/appearance', { value: next });
   }, []);
 
-  return <Ctx.Provider value={{ appearance, loaded, setLocal, save }}>{children}</Ctx.Provider>;
+  // Set by the dashboard whenever the active page changes (or while previewing).
+  const [pageBackground, setPageBackground] = useState<PageBackground | null>(null);
+
+  return (
+    <Ctx.Provider value={{ appearance, loaded, setLocal, save, pageBackground, setPageBackground }}>
+      {children}
+    </Ctx.Provider>
+  );
 }

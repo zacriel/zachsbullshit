@@ -481,7 +481,7 @@ function Toggle({ label, checked, onChange }: { label: string; checked: boolean;
 }
 
 /** URL input + file upload for an image/video config field. */
-function ImageField({
+export function ImageField({
   label,
   value,
   onChange,

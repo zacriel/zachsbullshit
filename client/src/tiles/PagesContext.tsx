@@ -15,6 +15,8 @@ export interface PagesCtx {
   renamePage: (id: number, name: string) => Promise<void>;
   deletePage: (id: number) => Promise<void>;
   reorderPages: (ids: number[]) => Promise<void>;
+  /** Open the background editor for a page. */
+  openPageBackground: (id: number) => void;
 }
 
 const noop = async () => {};
@@ -27,6 +29,7 @@ export const PagesContext = createContext<PagesCtx>({
   renamePage: noop,
   deletePage: noop,
   reorderPages: noop,
+  openPageBackground: () => {},
 });
 
 export const usePages = () => useContext(PagesContext);

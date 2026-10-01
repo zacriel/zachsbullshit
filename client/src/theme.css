@@ -1975,7 +1975,6 @@ video.tile-media__el {
 .page-view {
   animation: pageIn 0.32s var(--ease) both;
   transition: opacity 0.28s var(--ease), transform 0.28s var(--ease);
-  will-change: opacity, transform;
 }
 .page-view--out {
   opacity: 0;
@@ -2295,7 +2294,7 @@ body.is-leaving { opacity: 0; }
   .gradient-bg, .gradient-bg::after, .jumbo h1, .jumbo__scroll, .edit-banner__dot {
     animation: none !important;
   }
-  #root, .tab-panel, .grid-item, .stack-item { animation: none !important; }
+  #root, .tab-panel, .grid-item, .stack-item, .bgfx-layer { animation: none !important; }
   html { scroll-behavior: auto; }
   * { transition-duration: 0.01ms !important; }
   .boot__cursor { animation: none !important; }
@@ -2331,6 +2330,27 @@ body.is-leaving { opacity: 0; }
 /* ---------- Background: particles ---------- */
 .particles-bg { position: fixed; inset: 0; z-index: -2; background: var(--bg); }
 .particles-bg__canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+/* ---------- Background layers (crossfade between site/page backgrounds) ---------- */
+.bgfx-layer {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  animation: bgIn 0.7s var(--ease) both;
+}
+@keyframes bgIn { from { opacity: 0; } }
+
+/* ---------- Background: custom image / video (per-page) ---------- */
+.bg-media { position: fixed; inset: 0; z-index: -2; overflow: hidden; background: var(--bg); }
+.bg-media__el { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.bg-media__dim { position: absolute; inset: 0; }
+
+/* ---------- Page background editor ---------- */
+.pagebg__modes { grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); margin-bottom: 18px; }
+.pagebg__hint { font-size: 0.83rem; margin: 0 0 14px; }
+/* Lighter scrim so the live background preview stays visible behind the modal. */
+.modal-scrim--clear { background: rgba(8, 8, 12, 0.22); backdrop-filter: none; }
 
 /* ---------- Boot sequence intro ---------- */
 .boot {

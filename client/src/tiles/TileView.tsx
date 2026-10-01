@@ -223,7 +223,7 @@ function faviconUrl(rawUrl: string): string | null {
 function TabsTile({ tile }: { tile: Tile }) {
   const c = tile.config;
   const { authed, editMode } = useAuth();
-  const { pages, activePageId, setActivePage, addPage, renamePage, deletePage, reorderPages } = usePages();
+  const { pages, activePageId, setActivePage, addPage, renamePage, deletePage, reorderPages, openPageBackground } = usePages();
   const editing = !!authed && editMode;
   const justify = c.align === 'left' ? 'flex-start' : c.align === 'right' ? 'flex-end' : 'center';
   const variant = c.variant === 'underline' ? 'underline' : 'pills';
@@ -290,6 +290,13 @@ function TabsTile({ tile }: { tile: Tile }) {
           </button>
           <button className="btn btn--ghost btn--sm" onClick={onRename}>
             <Icon name="pen" /> Rename
+          </button>
+          <button
+            className="btn btn--ghost btn--sm"
+            onClick={() => openPageBackground(active.id)}
+            title={active.background ? 'This page has its own background' : 'Using the site background'}
+          >
+            <Icon name="image" /> Background{active.background ? ' •' : ''}
           </button>
           <button className="btn btn--danger btn--sm" onClick={onDelete} disabled={pages.length <= 1}>
             <Icon name="trash" /> Delete

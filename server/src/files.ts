@@ -67,6 +67,16 @@ export function createFilesRouter(db: Database.Database, config: Config, require
         protectedFiles.add(path.basename(cfg.file));
       }
     }
+    // Per-page background images/videos count as used too.
+    try {
+      const pages = db.prepare('SELECT background FROM pages WHERE background IS NOT NULL').all() as { background: string }[];
+      for (const p of pages) {
+        const m = p.background.match(/\/uploads\/([^"'\s?]+)/);
+        if (m) uploads.add(m[1]);
+      }
+    } catch {
+      /* pages table/column may not exist (dashboard module off) */
+    }
     return { uploads, protectedFiles };
   }
 

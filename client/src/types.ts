@@ -39,11 +39,26 @@ export interface Tile {
   page_id: number | null;
 }
 
+/**
+ * Optional per-page background override. When a page has none, the site-wide
+ * Appearance background is used.
+ */
+export interface PageBackground {
+  mode: 'gradient' | 'aurora' | 'particles' | 'off' | 'media';
+  /** Image or video URL (mode 'media'). */
+  media_url?: string;
+  /** Darkening over the media so tiles stay legible, 0–95 %. */
+  dim?: number;
+  /** Blur applied to the media, px. */
+  blur?: number;
+}
+
 export interface Page {
   id: number;
   name: string;
   slug: string;
   sort_order: number;
+  background?: PageBackground | null;
 }
 
 export interface ShortLink {

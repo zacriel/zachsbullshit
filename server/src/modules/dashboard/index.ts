@@ -47,7 +47,24 @@ interface PageRow {
   name: string;
   slug: string;
   sort_order: number;
-  created_at: string;
+  background: string | null;
+  created_at?: string;
+}
+
+/** Columns returned to clients for a page. */
+const PAGE_COLS = 'id, name, slug, sort_order, background';
+
+/** Shape a page row for the API — the background is stored as JSON text. */
+function pageOut(row: PageRow) {
+  let background: unknown = null;
+  if (row.background) {
+    try {
+      background = JSON.parse(row.background);
+    } catch {
+      background = null;
+    }
+  }
+  return { id: row.id, name: row.name, slug: row.slug, sort_order: row.sort_order, background };
 }
 
 interface StatusRow {
@@ -77,6 +94,23 @@ const createSchema = z.object({
 const pageSchema = z.object({
   name: z.string().trim().min(1).max(60),
 });
+
+// Optional per-page background. null/absent = use the site-wide Appearance
+// background; otherwise one of the built-in modes or a custom image/video.
+const pageBackgroundSchema = z.object({
+  mode: z.enum(['gradient', 'aurora', 'particles', 'off', 'media']),
+  media_url: z.string().trim().max(2000).optional(),
+  dim: z.number().min(0).max(95).optional(), // % darkening over media
+  blur: z.number().min(0).max(40).optional(), // px blur on media
+});
+
+// Page update: rename and/or set the background (send background: null to clear).
+const pageUpdateSchema = z
+  .object({
+    name: z.string().trim().min(1).max(60).optional(),
+    background: pageBackgroundSchema.nullable().optional(),
+  })
+  .refine((d) => d.name !== undefined || d.background !== undefined, { message: 'Nothing to update' });
 
 const reorderSchema = z.object({
   ids: z.array(z.number().int().positive()),
@@ -146,6 +180,11 @@ function migrate({ db }: ModuleContext): void {
   const cols = db.prepare('PRAGMA table_info(tiles)').all() as { name: string }[];
   if (!cols.some((c) => c.name === 'page_id')) {
     db.exec('ALTER TABLE tiles ADD COLUMN page_id INTEGER');
+  }
+  // Add the per-page background column to pre-existing pages tables.
+  const pcols = db.prepare('PRAGMA table_info(pages)').all() as { name: string }[];
+  if (!pcols.some((c) => c.name === 'background')) {
+    db.exec('ALTER TABLE pages ADD COLUMN background TEXT');
   }
   // Add the status-history column to pre-existing service_status tables.
   const scols = db.prepare('PRAGMA table_info(service_status)').all() as { name: string }[];
@@ -441,8 +480,8 @@ function register(ctx: ModuleContext): Router {
   // ---- Pages (tabs) ------------------------------------------------------
   // Public: the list of pages, ordered. Drives the tabs nav.
   router.get('/pages', (_req, res) => {
-    const rows = db.prepare('SELECT id, name, slug, sort_order FROM pages ORDER BY sort_order, id').all() as PageRow[];
-    res.json({ pages: rows });
+    const rows = db.prepare(`SELECT ${PAGE_COLS} FROM pages ORDER BY sort_order, id`).all() as PageRow[];
+    res.json({ pages: rows.map(pageOut) });
   });
 
   // Admin: create a page.
@@ -455,8 +494,8 @@ function register(ctx: ModuleContext): Router {
     const slug = uniqueSlug(db, slugify(parsed.data.name));
     const nextOrder = ((db.prepare('SELECT MAX(sort_order) AS m FROM pages').get() as { m: number | null }).m ?? -1) + 1;
     const info = db.prepare('INSERT INTO pages (name, slug, sort_order) VALUES (?, ?, ?)').run(parsed.data.name, slug, nextOrder);
-    const page = db.prepare('SELECT id, name, slug, sort_order FROM pages WHERE id = ?').get(info.lastInsertRowid) as PageRow;
-    res.status(201).json({ page });
+    const page = db.prepare(`SELECT ${PAGE_COLS} FROM pages WHERE id = ?`).get(info.lastInsertRowid) as PageRow;
+    res.status(201).json({ page: pageOut(page) });
   });
 
   // Admin: reorder pages (must precede "/pages/:id").
@@ -472,21 +511,29 @@ function register(ctx: ModuleContext): Router {
     res.json({ ok: true });
   });
 
-  // Admin: rename a page (slug stays fixed so existing links keep working).
+  // Admin: rename a page and/or set its background (slug stays fixed so
+  // existing links keep working). `background: null` clears the override.
   router.put('/pages/:id', requireAuth, (req, res) => {
     const id = Number(req.params.id);
-    const parsed = pageSchema.safeParse(req.body);
+    const parsed = pageUpdateSchema.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({ error: 'Invalid page' });
+      res.status(400).json({ error: 'Invalid page', details: parsed.error.flatten() });
       return;
     }
-    const info = db.prepare('UPDATE pages SET name = ? WHERE id = ?').run(parsed.data.name, id);
-    if (info.changes === 0) {
+    const exists = db.prepare('SELECT 1 FROM pages WHERE id = ?').get(id);
+    if (!exists) {
       res.status(404).json({ error: 'Page not found' });
       return;
     }
-    const page = db.prepare('SELECT id, name, slug, sort_order FROM pages WHERE id = ?').get(id) as PageRow;
-    res.json({ page });
+    const { name, background } = parsed.data;
+    if (name !== undefined) db.prepare('UPDATE pages SET name = ? WHERE id = ?').run(name, id);
+    if (background !== undefined) {
+      // A media background with no URL is meaningless — treat it as "site default".
+      const keep = background && !(background.mode === 'media' && !background.media_url);
+      db.prepare('UPDATE pages SET background = ? WHERE id = ?').run(keep ? JSON.stringify(background) : null, id);
+    }
+    const page = db.prepare(`SELECT ${PAGE_COLS} FROM pages WHERE id = ?`).get(id) as PageRow;
+    res.json({ page: pageOut(page) });
   });
 
   // Admin: delete a page and every tile on it (never the last page).

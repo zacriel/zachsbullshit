@@ -81,13 +81,20 @@ page's tiles (defaulting to the first page). A `tabs` tile is **global**
 visible page client-side (deep-linkable via the `#p=<slug>` URL hash). Pages are
 managed inline from the tabs tile in edit mode.
 
+Each page may carry an optional **background** override; `null` means "use the
+site-wide Appearance background". Shape:
+`{ mode: 'gradient' | 'aurora' | 'particles' | 'off' | 'media', media_url?, dim?, blur? }`
+— `media_url` is an image or mp4/webm video (mode `media`), `dim` is 0–95 %
+darkening, `blur` is 0–40 px. Aurora uses the site's aurora tuning. Uploads
+referenced by a page background count as "used" in the file manager.
+
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | `GET` | `/api/tiles/services` | ✅ | Every service tile across all pages `{ services: [{ id, name }] }`, for the uptime tile's picker. |
-| `GET` | `/api/tiles/pages` | — | Ordered list of pages: `{ pages: [{ id, name, slug, sort_order }] }`. |
+| `GET` | `/api/tiles/pages` | — | Ordered list of pages: `{ pages: [{ id, name, slug, sort_order, background }] }`. |
 | `POST` | `/api/tiles/pages` | ✅ | Create a page `{ name }` (slug auto-generated, unique). |
 | `PUT` | `/api/tiles/pages/reorder` | ✅ | Reorder pages: `{ ids: [...] }`. |
-| `PUT` | `/api/tiles/pages/:id` | ✅ | Rename a page `{ name }` (slug stays fixed). |
+| `PUT` | `/api/tiles/pages/:id` | ✅ | Update a page `{ name?, background? }` — rename (slug stays fixed) and/or set its background (`background: null` clears it). |
 | `DELETE` | `/api/tiles/pages/:id` | ✅ | Delete a page and every tile on it (never the last page). |
 
 Any non-banner tile may set `config.bg_image` (a URL, or an uploaded image/video
